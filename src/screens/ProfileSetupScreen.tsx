@@ -28,8 +28,8 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
       {step === 1 && (
         <View style={styles.stepContainer}>
-          <Text style={styles.title}>Basic Info</Text>
-          <Text style={styles.subtitle}>Tell us about yourself so we can calculate your macro needs.</Text>
+          <Text style={styles.title}>Basic Info & Location</Text>
+          <Text style={styles.subtitle}>Help us adapt the prices and calories according to your lifestyle.</Text>
           
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Age</Text>
@@ -40,21 +40,26 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <Text style={styles.label}>Current Weight (kg)</Text>
             <TextInput style={styles.input} placeholder="e.g. 70" keyboardType="numeric" />
           </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>City (Wilaya)</Text>
+            <TextInput style={styles.input} placeholder="e.g. Alger, Oran, Constantine" />
+          </View>
         </View>
       )}
 
       {step === 2 && (
         <View style={styles.stepContainer}>
-          <Text style={styles.title}>Health & Diet</Text>
-          <Text style={styles.subtitle}>Are there any medical considerations or allergies?</Text>
+          <Text style={styles.title}>Health & Medical</Text>
+          <Text style={styles.subtitle}>List any diseases, allergies or detailed medical antecedents.</Text>
           
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Medical Conditions</Text>
-            <TextInput style={[styles.input, styles.textArea]} multiline placeholder="e.g. Diabetes, Hypertension..." />
+            <Text style={styles.label}>Medical Conditions & Antecedents</Text>
+            <TextInput style={[styles.input, styles.textArea]} multiline placeholder="Describe your diseases, allergies, or past operations (e.g. Type 2 Diabetes, Lactose Intolerant)..." />
           </View>
 
           <View style={styles.tagsContainer}>
-             {["Diabetic", "High Blood Pressure", "Gluten Free", "Lactose Intolerant"].map((tag) => (
+             {["Diabète", "Hypertension", "Cholestérol", "Insuffisance rénale", "Anémie"].map((tag) => (
                 <View key={tag} style={styles.tag}>
                    <Text style={styles.tagText}>{tag}</Text>
                 </View>
@@ -65,9 +70,21 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
       {step === 3 && (
         <View style={styles.stepContainer}>
-          <Text style={styles.title}>Budget Setup</Text>
-          <Text style={styles.subtitle}>We will build your Algerian meal plan around this specific monthly budget.</Text>
+          <Text style={styles.title}>Lifestyle & Budget</Text>
+          <Text style={styles.subtitle}>Adjust your daily meal structure and monthly budget.</Text>
           
+          <View style={styles.rowInputs}>
+             <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+               <Text style={styles.label}>Meals/Day</Text>
+               <TextInput style={styles.input} placeholder="e.g. 3" keyboardType="numeric" />
+             </View>
+             
+             <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+               <Text style={styles.label}>Max Cook Time</Text>
+               <TextInput style={styles.input} placeholder="mins/meal" keyboardType="numeric" />
+             </View>
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Monthly Food Budget (DA)</Text>
             <View style={styles.currencyInputContainer}>
@@ -80,14 +97,14 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 onChangeText={setBudget}
               />
             </View>
-            <Text style={styles.helperText}>Recommended minimum: ~15,000 DA/person</Text>
+            <Text style={styles.helperText}>Recommended for 1 person: ~18,000 DA/month</Text>
           </View>
         </View>
       )}
 
       <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
         <Text style={styles.continueButtonText}>
-          {step < 3 ? "Continue" : "Generate My Plan"}
+          {step < 3 ? "Continue" : "Generate Localized Plan"}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -139,6 +156,11 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     fontSize: 16,
   },
+  rowInputs: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
   inputGroup: {
     marginBottom: 16,
   },
@@ -152,10 +174,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6", // gray-100
     padding: 16,
     borderRadius: 12,
-    fontSize: 18,
+    fontSize: 16,
   },
   textArea: {
     height: 96,
+    textAlignVertical: "top",
   },
   tagsContainer: {
     flexDirection: "row",
@@ -175,7 +198,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     color: "#047857", // emerald-700
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
   },
   currencyInputContainer: {
@@ -227,3 +250,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+

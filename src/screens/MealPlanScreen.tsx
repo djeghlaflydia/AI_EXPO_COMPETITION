@@ -5,9 +5,37 @@ export default function MealPlanScreen() {
   const [selectedDay, setSelectedDay] = useState(0);
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+  // Mocking the backend 'plan-semaine' response
+  const weeklyPlanData = {
+    weeklySummary: {
+      budget_ok: true,
+      totalCost: "2058 DA",
+      averageCalories: 1850,
+    },
+    days: [
+      {
+        id: 0,
+        meals: [
+          { id: "m1", title: "Petit-déjeuner", name: "Pain Complet & Huile d'Olive (Zit Zitoune)", calories: "320", cost: "40 DA", budget_ok: true, time: "15 min" },
+          { id: "m2", title: "Déjeuner", name: "Chorba Frik Light & Poulet Émietté", calories: "450", cost: "160 DA", budget_ok: true, time: "45 min" },
+          { id: "m3", title: "Dîner", name: "Salade Variée & Oeufs Durs", calories: "300", cost: "90 DA", budget_ok: true, time: "10 min" }
+        ],
+        dailyTotals: { calories: 1070, cost: 290, budget_ok: true }
+      },
+      // Other days mocked identically for UI display
+    ]
+  };
+
+  const currentDayPlan = weeklyPlanData.days[0]; // Assuming day 0 for static UI
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Weekly Plan</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Weekly Plan</Text>
+        <View style={[styles.budgetBadge, weeklyPlanData.weeklySummary.budget_ok ? styles.budgetOk : styles.budgetWarning]}>
+          <Text style={styles.budgetBadgeText}>{weeklyPlanData.weeklySummary.totalCost} / week</Text>
+        </View>
+      </View>
 
       {/* Week Navigation */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weekNav}>
@@ -30,44 +58,60 @@ export default function MealPlanScreen() {
         ))}
       </ScrollView>
 
+      {/* Daily Summary */}
+      <View style={styles.dailySummary}>
+        <Text style={styles.summaryText}>Total: {currentDayPlan.dailyTotals.cost} DA (Budget {currentDayPlan.dailyTotals.budget_ok ? "OK" : "Over"})</Text>
+        <Text style={styles.summaryText}>{currentDayPlan.dailyTotals.calories} kcal</Text>
+      </View>
+
       {/* Meals based on selected day */}
       <View style={styles.mealsContainer}>
-        <MealDetailCard title="Chorba Frik (Healthy Version)" type="Lunch" calories="420" cost="~120 DA" />
-        <MealDetailCard title="Kesra with Olive Oil & Tomato Salad" type="Snack" calories="200" cost="~50 DA" />
-        <MealDetailCard title="Grilled Chicken with Karantika" type="Dinner" calories="600" cost="~250 DA" />
+        {currentDayPlan.meals.map(meal => (
+          <MealDetailCard 
+            key={meal.id}
+            title={meal.name} 
+            type={meal.title} 
+            calories={meal.calories} 
+            cost={meal.cost}
+            time={meal.time}
+            budget_ok={meal.budget_ok}
+          />
+        ))}
       </View>
       
       {/* Generate next week */}
       <TouchableOpacity style={styles.regenerateButton}>
-        <Text style={styles.regenerateText}>↻ Ask AI to regenerate this day</Text>
+        <Text style={styles.regenerateText}>↻ Ask AI to optimize for less budget</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-function MealDetailCard({ title, type, calories, cost }: any) {
+function MealDetailCard({ title, type, calories, cost, time, budget_ok }: any) {
   return (
     <View style={styles.mealCard}>
       <View style={styles.mealHeader}>
         <View style={styles.mealTypeBadge}>
           <Text style={styles.mealTypeText}>{type}</Text>
         </View>
-        <Text style={styles.mealCost}>{cost}</Text>
+        <Text style={[styles.mealCost, budget_ok ? styles.costOk : styles.costWarning]}>
+          ~{cost}
+        </Text>
       </View>
       
       <Text style={styles.mealTitle}>{title}</Text>
-      <Text style={styles.mealDescription}>A delicious healthy twist to a classic Algerian dish, carefully portioned for your calorie needs.</Text>
+      <Text style={styles.mealDescription}>Adapted to your medical profile with local ingredients available in Algeria.</Text>
       
       <View style={styles.mealFooter}>
         <View style={styles.mealMetrics}>
-            <Text style={styles.metricBadge}>⏱ 25 min cook</Text>
+            <Text style={styles.metricBadge}>⏱ {time}</Text>
             <Text style={[styles.metricBadge, { marginLeft: 8 }]}>🥑 {calories} kcal</Text>
         </View>
       </View>
       
       {/* Swap button */}
       <TouchableOpacity style={styles.swapButton}>
-        <Text style={styles.swapText}>🔄 Swap Recipe</Text>
+        <Text style={styles.swapText}>🔄 Swap</Text>
       </TouchableOpacity>
     </View>
   );
@@ -83,14 +127,35 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 40,
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
   title: {
     fontSize: 30,
     fontWeight: "800",
     color: "#064E3B", // emerald-900
-    marginBottom: 24,
+  },
+  budgetBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  budgetOk: {
+    backgroundColor: "#D1FAE5",
+  },
+  budgetWarning: {
+    backgroundColor: "#FEE2E2",
+  },
+  budgetBadgeText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#065F46",
   },
   weekNav: {
-    marginBottom: 24,
+    marginBottom: 16,
     flexDirection: "row",
   },
   dayButton: {
@@ -122,6 +187,21 @@ const styles = StyleSheet.create({
   dayTextInactive: {
     color: "#6B7280", // gray-500
   },
+  dailySummary: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#F9FAFB",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  summaryText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
   mealsContainer: {
     marginBottom: 40,
   },
@@ -143,7 +223,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E5E7EB", // gray-200
-    marginBottom: 12,
+    marginBottom: 16,
     borderRadius: 24,
     padding: 20,
     shadowColor: "#000",
@@ -160,21 +240,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   mealTypeBadge: {
-    backgroundColor: "#FFEDD5", // orange-100
+    backgroundColor: "#F3F4F6", // gray-100
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 8,
   },
   mealTypeText: {
-    color: "#9A3412", // orange-800
+    color: "#4B5563", // gray-600
     fontSize: 12,
     fontWeight: "bold",
     textTransform: "uppercase",
   },
   mealCost: {
-    color: "#9CA3AF", // gray-400
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  costOk: {
+    color: "#059669",
+  },
+  costWarning: {
+    color: "#DC2626",
   },
   mealTitle: {
     fontSize: 20,
@@ -214,7 +299,7 @@ const styles = StyleSheet.create({
     right: 16,
     backgroundColor: "#111827", // gray-900
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 8,
     borderRadius: 9999,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

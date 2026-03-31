@@ -1,22 +1,55 @@
 import { View, Text, ScrollView, StyleSheet } from "react-native";
 
 export default function ProgressScreen() {
+  // Mocking the backend user 'progression' payload
+  const progressionData = {
+    weight: { current: 74, change: "-1.2kg" },
+    glycemia: { current: "1.05", unit: "g/L", status: "Stable" },
+    tension: { current: "12/8", unit: "mmHg", status: "Normal" },
+    adherence: { value: 86, text: "↑ better than last week" },
+    budget: {
+      spent: 8450, // DA
+      monthlyTarget: 18000, // 600 * 30 DA
+    },
+    weekGlance: [
+      { day: "M", status: "success" },
+      { day: "T", status: "success" },
+      { day: "W", status: "success" },
+      { day: "T", status: "warning" },
+      { day: "F", status: "pending" },
+      { day: "S", status: "pending" },
+      { day: "S", status: "pending" },
+    ]
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>My Progress</Text>
+      <Text style={styles.title}>My Medical Progress</Text>
 
       {/* Stats Cards */}
-      <View style={styles.statsContainer}>
+      <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Current Weight</Text>
-          <Text style={styles.statValue}>74<Text style={styles.statUnit}>kg</Text></Text>
-          <Text style={styles.statChange}>↓ 1.2kg this month</Text>
+          <Text style={styles.statValue}>{progressionData.weight.current}<Text style={styles.statUnit}>kg</Text></Text>
+          <Text style={styles.statChange}>↓ {progressionData.weight.change} this month</Text>
         </View>
 
-        <View style={[styles.statCard, { marginLeft: 16 }]}>
-          <Text style={styles.statLabel}>Adherence</Text>
-          <Text style={styles.statValue}>86<Text style={styles.statUnit}>%</Text></Text>
-          <Text style={styles.statChange}>↑ better than last week</Text>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Adherence Plan</Text>
+          <Text style={styles.statValue}>{progressionData.adherence.value}<Text style={styles.statUnit}>%</Text></Text>
+          <Text style={styles.statChange}>{progressionData.adherence.text}</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Fasting Glycemia</Text>
+          <Text style={styles.statValue}>{progressionData.glycemia.current}<Text style={styles.statUnit}>{progressionData.glycemia.unit}</Text></Text>
+          <Text style={styles.statChangeNeutral}>• {progressionData.glycemia.status}</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Blood Pressure</Text>
+          <Text style={styles.statValue}>{progressionData.tension.current}<Text style={styles.statUnit}></Text></Text>
+          <Text style={styles.statChangeNeutral}>• {progressionData.tension.status}</Text>
         </View>
       </View>
 
@@ -25,32 +58,32 @@ export default function ProgressScreen() {
       {/* Budget Progress */}
       <View style={styles.budgetContainer}>
         <View style={styles.budgetRow}>
-          <Text style={styles.budgetLabel}>Spent (DA)</Text>
-          <Text style={styles.budgetSpentValue}>8,450</Text>
+          <Text style={styles.budgetLabel}>Monthly Spent (DA)</Text>
+          <Text style={styles.budgetSpentValue}>{progressionData.budget.spent.toLocaleString()}</Text>
         </View>
         <View style={styles.budgetRow}>
-          <Text style={styles.budgetLabel}>Monthly Budget (DA)</Text>
-          <Text style={styles.budgetTotalValue}>20,000</Text>
+          <Text style={styles.budgetLabel}>Monthly Limit (DA)</Text>
+          <Text style={styles.budgetTotalValue}>{progressionData.budget.monthlyTarget.toLocaleString()}</Text>
         </View>
         
         {/* Simple Progress Bar */}
         <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarFill, { width: '42%' }]} />
+          <View style={[styles.progressBarFill, { width: `${(progressionData.budget.spent / progressionData.budget.monthlyTarget) * 100}%` }]} />
         </View>
-        <Text style={styles.budgetHelperText}>You are saving roughly 12% compared to your goal!</Text>
+        <Text style={styles.budgetHelperText}>You are saving roughly 12% compared to your goal, thanks to the optimizer!</Text>
       </View>
 
       <Text style={styles.sectionTitle}>Week at a Glance</Text>
       <View style={styles.weekGlanceContainer}>
-        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+        {progressionData.weekGlance.map((d, i) => (
           <View key={i} style={styles.dayGlance}>
             <View style={[
               styles.dayCircle,
-              i < 3 ? styles.dayCircleSuccess : i === 3 ? styles.dayCircleFail : styles.dayCirclePending
+              d.status === 'success' ? styles.dayCircleSuccess : d.status === 'warning' ? styles.dayCircleWarning : styles.dayCirclePending
             ]}>
-              {i < 3 ? <Text style={styles.dayCircleText}>✓</Text> : i === 3 ? <Text style={styles.dayCircleText}>✕</Text> : null}
+              {d.status === 'success' ? <Text style={styles.dayCircleText}>✓</Text> : d.status === 'warning' ? <Text style={styles.dayCircleText}>!</Text> : null}
             </View>
-            <Text style={styles.dayGlanceText}>{d}</Text>
+            <Text style={styles.dayGlanceText}>{d.day}</Text>
           </View>
         ))}
       </View>
@@ -74,16 +107,15 @@ const styles = StyleSheet.create({
     color: "#064E3B", // emerald-900
     marginBottom: 32,
   },
-  statsContainer: {
+  statsGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     marginBottom: 32,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB", // gray-200
+    rowGap: 16,
   },
   statCard: {
-    flex: 1,
+    width: "48%",
     backgroundColor: "#FFFFFF",
     padding: 16,
     borderRadius: 16,
@@ -100,6 +132,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     fontWeight: "bold",
     marginBottom: 4,
+    textAlign: "center",
   },
   statValue: {
     fontSize: 24,
@@ -112,6 +145,12 @@ const styles = StyleSheet.create({
   },
   statChange: {
     color: "#10B981", // emerald-500
+    fontSize: 12,
+    fontWeight: "bold",
+    marginTop: 4,
+  },
+  statChangeNeutral: {
+    color: "#6B7280", // gray-500
     fontSize: 12,
     fontWeight: "bold",
     marginTop: 4,
@@ -201,8 +240,8 @@ const styles = StyleSheet.create({
   dayCircleSuccess: {
     backgroundColor: "#10B981", // emerald-500
   },
-  dayCircleFail: {
-    backgroundColor: "#F87171", // red-400
+  dayCircleWarning: {
+    backgroundColor: "#F59E0B", // amber-500
   },
   dayCirclePending: {
     backgroundColor: "#F3F4F6", // gray-100
@@ -217,3 +256,4 @@ const styles = StyleSheet.create({
     color: "#9CA3AF", // gray-400
   },
 });
+
