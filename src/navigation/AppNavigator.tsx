@@ -1,25 +1,21 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
 import LoginScreen from "../screens/LoginScreen";
-import DashboardScreen from "../screens/DashboardScreen";
-import HistoryScreen from "../screens/HistoryScreen";
-
+import ProfileSetupScreen from "../screens/ProfileSetupScreen";
+import TabNavigator from "./TabNavigator";
 export type RootStackParamList = {
   Login: undefined;
-  Dashboard: undefined;
-  History: undefined;
+  ProfileSetup: undefined;
+  MainTabs: undefined;
 };
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
-        <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+        <Stack.Screen name="MainTabs" component={TabNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );
