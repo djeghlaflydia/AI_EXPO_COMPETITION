@@ -6,6 +6,9 @@ import AuthNavigator from './AuthNavigator';
 import MainTabNavigator from './MainTabNavigator';
 
 export type RootStackParamList = {
+Login: undefined;
+  ProfileSetup: undefined;
+  MainTabs: undefined;
   Auth: undefined;
   Main: undefined;
 };
