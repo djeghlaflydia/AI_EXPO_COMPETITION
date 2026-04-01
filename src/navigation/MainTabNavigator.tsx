@@ -32,7 +32,7 @@ export default function MainTabNavigator() {
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          borderTopColor: colors.secondary,
           height: Platform.OS === 'ios' ? 105 + (insets.bottom > 0 ? 0 : 10) : 95,
           paddingBottom: Platform.OS === 'ios' ? 35 : 15,
           paddingTop: 8,

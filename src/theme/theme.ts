@@ -1,23 +1,24 @@
+// theme/theme.ts
 export const colors = {
-  primary: '#2E7D32', // Deep Olive Green
-  secondary: '#F57C00', // Saffron/Terracotta
-  background: '#F9F9F9',
+  primary: '#059669', // Algerian green
+  secondary: '#F59E0B', // Warm orange for Algerian cuisine
+  background: '#F9FAFB',
   surface: '#FFFFFF',
-  text: '#1C1C1E',
-  textSecondary: '#666666',
-  border: '#E0E0E0',
-  success: '#388E3C',
-  warning: '#FBC02D',
-  error: '#D32F2F',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  success: '#10B981',
+  error: '#EF4444',
+  warning: '#F59E0B',
 };
 
 export const spacing = {
   xs: 4,
   sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 40,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
 };
 
 export const shadows = {

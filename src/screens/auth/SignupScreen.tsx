@@ -1,4 +1,4 @@
-// screens/auth/LoginScreen.tsx
+// screens/auth/SignupScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -14,38 +14,38 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { colors, spacing } from '../../theme/theme';
-import { useAuth } from '../../context/AuthContext';
 
 type Props = {
-  navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
 };
 
-export default function LoginScreen({ navigation }: Props) {
-  const { signIn } = useAuth();
+export default function SignupScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+// In SignupScreen.tsx, update the handleSignup function
+const handleSignup = () => {
+  if (!email || !password || !confirmPassword || !name || !age) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
 
-    setIsLoading(true);
-    try {
-      // TODO: Implement actual login logic with your backend
-      
-      // Simulate API call
-      setTimeout(() => {
-        setIsLoading(false);
-        signIn(); // This will trigger AppNavigator to switch to 'Main'
-      }, 1000);
-    } catch (error) {
-      setIsLoading(false);
-      Alert.alert('Error', 'Invalid email or password');
-    }
-  };
+  if (password !== confirmPassword) {
+    Alert.alert('Error', 'Passwords do not match');
+    return;
+  }
+
+  if (parseInt(age) < 18) {
+    Alert.alert('Error', 'You must be at least 18 years old');
+    return;
+  }
+
+  // Navigate to the enhanced onboarding wizard
+  navigation.navigate('OnboardingWizard');
+};
 
   return (
     <KeyboardAvoidingView
@@ -53,14 +53,30 @@ export default function LoginScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.title}>NutriAlgérie</Text>
-          <Text style={styles.subtitle}>
-            Your personalized Algerian meal plan
-          </Text>
-        </View>
-
         <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your full name"
+              placeholderTextColor={colors.textSecondary}
+              value={name}
+              onChangeText={setName}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Age</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your age"
+              placeholderTextColor={colors.textSecondary}
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+            />
+          </View>
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -78,7 +94,7 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your password"
+              placeholder="Create a password"
               placeholderTextColor={colors.textSecondary}
               value={password}
               onChangeText={setPassword}
@@ -86,27 +102,26 @@ export default function LoginScreen({ navigation }: Props) {
             />
           </View>
 
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => Alert.alert('Reset Password', 'Feature coming soon')}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Confirm Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm your password"
+              placeholderTextColor={colors.textSecondary}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={handleSignup}>
+            <Text style={styles.buttonText}>Continue</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Logging in...' : 'Login'}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-              <Text style={styles.signupLink}>Sign Up</Text>
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLink}>Login</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -122,23 +137,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: spacing.xl,
-  },
-  header: {
-    marginBottom: spacing.xxl,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: colors.primary,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
   form: {
     width: '100%',
@@ -161,39 +160,29 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     color: colors.text,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: spacing.xl,
-  },
-  forgotPasswordText: {
-    color: colors.secondary,
-    fontSize: 14,
-  },
   button: {
     backgroundColor: colors.secondary,
     paddingVertical: spacing.md,
     borderRadius: 12,
     alignItems: 'center',
+    marginTop: spacing.lg,
     marginBottom: spacing.lg,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
   },
   buttonText: {
     color: colors.surface,
     fontSize: 18,
     fontWeight: 'bold',
   },
-  signupContainer: {
+  loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  signupText: {
+  loginText: {
     color: colors.textSecondary,
     fontSize: 14,
   },
-  signupLink: {
+  loginLink: {
     color: colors.secondary,
     fontSize: 14,
     fontWeight: '600',

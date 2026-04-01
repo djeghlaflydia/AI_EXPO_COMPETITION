@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.secondary,
   },
   title: {
     fontSize: 24,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.secondary,
     marginRight: spacing.md,
   },
   itemName: {
