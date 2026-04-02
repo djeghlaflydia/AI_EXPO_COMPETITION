@@ -41,7 +41,7 @@ export default function BudgetScreen({ navigation, route }: Props) {
   const [isFamilySizeFocused, setIsFamilySizeFocused] = useState(false);
   const [isNotesFocused, setIsNotesFocused] = useState(false);
 
-  const handleComplete = async () => {
+    const handleComplete = async () => {
     if (!budget) {
       Alert.alert('Error', 'Please enter your monthly food budget.');
       return;
@@ -54,15 +54,19 @@ export default function BudgetScreen({ navigation, route }: Props) {
     }
 
     const completeProfile = {
-      ...route.params,
+      email: route.params?.email || '',
+      name: route.params?.name || '',
+      healthConditions: route.params?.healthConditions || [],
+      otherConditions: route.params?.otherConditions || '',
+      dietaryRestrictions: route.params?.dietaryRestrictions || '',
+      foodPreferences: route.params?.foodPreferences || '',
       monthlyBudget: budgetNumber,
       familySize: parseInt(familySize),
       additionalNotes,
     };
 
     console.log('Complete Profile:', completeProfile);
-    
-    navigation.navigate('AILoading');
+    navigation.replace('AILoading');
   };
 
   return (

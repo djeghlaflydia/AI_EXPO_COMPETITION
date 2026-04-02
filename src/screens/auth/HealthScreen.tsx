@@ -99,20 +99,20 @@ export default function HealthScreen({ navigation, route }: Props) {
   ) => {
     setList(list.map((item) => item.id === id ? { ...item, selected: !item.selected } : item));
   };
+    const handleNext = () => {
+      const selectedConditions = conditions.filter((c) => c.selected).map((c) => c.name);
+      const selectedDiet = dietTags.filter((d) => d.selected).map((d) => d.label);
+      const selectedFoodPrefs = foodPrefs.filter((f) => f.selected).map((f) => f.label);
 
-  const handleNext = () => {
-    const selectedConditions = conditions.filter((c) => c.selected).map((c) => c.name);
-    const selectedDiet = dietTags.filter((d) => d.selected).map((d) => d.label);
-    const selectedFoodPrefs = foodPrefs.filter((f) => f.selected).map((f) => f.label);
-
-    navigation.navigate('Budget', {
-      ...route.params,  // This now contains email and name from Signup
-      healthConditions: selectedConditions,
-      otherConditions,
-      dietaryRestrictions: [...selectedDiet, otherDiet].filter(Boolean).join(', '),
-      foodPreferences: selectedFoodPrefs.join(', '),
-    });
-  };
+      navigation.navigate('Budget', {
+        email: route.params?.email || '',
+        name: route.params?.name || '',
+        healthConditions: selectedConditions,
+        otherConditions,
+        dietaryRestrictions: [...selectedDiet, otherDiet].filter(Boolean).join(', '),
+        foodPreferences: selectedFoodPrefs.join(', '),
+      });
+    };
 
   return (
     <SafeAreaView style={styles.safe}>

@@ -43,7 +43,7 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greetingName}>Sbah el Khir,{'\n'}Ahmed!</Text>
+            <Text style={styles.greetingName}>Sbah el Khir!</Text>
             <Text style={styles.greetingSub}>April 15, 2026</Text>
           </View>
           <View style={styles.avatar}>

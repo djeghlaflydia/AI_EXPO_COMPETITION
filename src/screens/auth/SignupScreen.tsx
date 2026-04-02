@@ -126,7 +126,7 @@ export default function SignupScreen({ navigation }: Props) {
       return;
     }
     if (password.length < 4) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      Alert.alert('Error', 'Password must be at least 4 characters');
       return;
     }
     if (password !== confirmPwd) {

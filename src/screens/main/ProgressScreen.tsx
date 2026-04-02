@@ -139,7 +139,7 @@ export default function ProgressScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greetingName}>Your Health,{'\n'}Ahmed!</Text>
+            <Text style={styles.greetingName}>Your Health</Text>
             <Text style={styles.greetingSub}>April 1, 2026</Text>
           </View>
           <View style={styles.avatar}>
@@ -196,7 +196,7 @@ export default function ProgressScreen() {
             <View style={styles.adherenceInfo}>
               <Text style={styles.adherenceScore}>85%</Text>
               <Text style={styles.adherenceLabel}>
-                You followed the plan{'\n'}most days. Good job!
+                You followed the plan most days. Good job!
               </Text>
               <View style={styles.chipRow}>
                 <MetaChip label="6 of 7 days" dot={COLORS.greenMid} />
