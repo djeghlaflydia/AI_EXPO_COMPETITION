@@ -76,19 +76,19 @@ export default function BudgetScreen({ navigation, route }: Props) {
           </TouchableOpacity>
 
           <View style={styles.stepPills}>
-            {[0, 1, 2, 3].map((i) => (
+            {[0, 1, 2].map((i) => (
               <View
                 key={i}
                 style={[
                   styles.stepPill,
-                  i < 3  && styles.stepPillDone, // Assuming Budget is the 4th step (index 3)
-                  i === 3 && styles.stepPillActive,
+                  i < 2  && styles.stepPillDone, // Assuming Budget is the 4th step (index 3)
+                  i === 2 && styles.stepPillActive,
                 ]}
               />
             ))}
           </View>
 
-          <Text style={styles.title}>Monthly{"\n"}Budget</Text>
+          <Text style={styles.title}>Monthly Budget</Text>
           <Text style={styles.subtitle}>Tell us your budget to help us plan affordable meals</Text>
         </View>
 
@@ -155,7 +155,7 @@ export default function BudgetScreen({ navigation, route }: Props) {
 
           {/* -- CTA -- */}
           <TouchableOpacity style={styles.ctaBtn} onPress={handleComplete}>
-            <Text style={styles.ctaText}>Continue  →</Text>
+            <Text style={styles.ctaText}>Create Account ✦</Text>
           </TouchableOpacity>
 
           <Text style={styles.stepHint}>

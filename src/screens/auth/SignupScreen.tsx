@@ -77,12 +77,10 @@ type Props = {
 
 export default function SignupScreen({ navigation }: Props) {
   const { signIn } = useAuth();
-  const [firstName,    setFirstName]    = useState('');
-  const [lastName,     setLastName]     = useState('');
+  const [fullName,     setFullName]     = useState('');
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');
   const [confirmPwd,   setConfirmPwd]   = useState('');
-  const [gender,       setGender]       = useState<'male' | 'female' | null>(null);
   const [showPwd,      setShowPwd]      = useState(false);
   const [showConfirm,  setShowConfirm]  = useState(false);
   const [isLoading,    setIsLoading]    = useState(false);
@@ -119,7 +117,7 @@ export default function SignupScreen({ navigation }: Props) {
 
   const handleSignup = async () => {
     // 1. Validation
-    if (!firstName || !lastName || !email || !password || !confirmPwd || !gender) {
+    if (!fullName || !email || !password || !confirmPwd) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -127,7 +125,7 @@ export default function SignupScreen({ navigation }: Props) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    if (password.length < 8) {
+    if (password.length < 4) {
       Alert.alert('Error', 'Password must be at least 8 characters');
       return;
     }
@@ -137,14 +135,15 @@ export default function SignupScreen({ navigation }: Props) {
     }
 
     setIsLoading(true);
-    
-    // 2. Simulate Success & Navigate to ProfileInfoScreen
-    setTimeout(() => {
-      setIsLoading(false);
-      // Important: This navigates to the next screen
-      navigation.navigate('ProfileInfo' as any); 
-    }, 1200);
-  };
+  
+  setTimeout(() => {
+    setIsLoading(false);
+    navigation.navigate('Health', {
+      email: email,
+      name: fullName,
+    });
+  }, 1200);
+};
 
   const shimmerTranslate = shimmer.interpolate({
     inputRange: [-1, 2],
@@ -188,29 +187,16 @@ export default function SignupScreen({ navigation }: Props) {
 
             {/* Inputs */}
             <View style={styles.form}>
-              <View style={styles.row}>
-                <View style={[styles.inputWrapper, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>First Name</Text>
+                <View style={[styles.inputWrapper]}>
+                  <Text style={styles.inputLabel}>Full name</Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={styles.input}
-                      placeholder="John"
-                      value={firstName}
-                      onChangeText={setFirstName}
+                      placeholder="john doe"
+                      value={fullName}
+                      onChangeText={setFullName}
                     />
                   </View>
-                </View>
-                <View style={[styles.inputWrapper, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Last Name</Text>
-                  <View style={styles.inputContainer}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Doe"
-                      value={lastName}
-                      onChangeText={setLastName}
-                    />
-                  </View>
-                </View>
               </View>
 
               <View style={styles.inputWrapper}>
@@ -262,27 +248,6 @@ export default function SignupScreen({ navigation }: Props) {
                 </View>
               </View>
 
-              {/* Gender Selection */}
-              <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>Gender</Text>
-                <View style={styles.genderRow}>
-                  <TouchableOpacity
-                    style={[styles.genderBtn, gender === 'male' && styles.genderBtnActive]}
-                    onPress={() => setGender('male')}
-                  >
-                    <Text style={styles.genderEmoji}>👨</Text>
-                    <Text style={[styles.genderText, gender === 'male' && styles.genderTextActive]}>Male</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.genderBtn, gender === 'female' && styles.genderBtnActive]}
-                    onPress={() => setGender('female')}
-                  >
-                    <Text style={styles.genderEmoji}>👩</Text>
-                    <Text style={[styles.genderText, gender === 'female' && styles.genderTextActive]}>Female</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
               {/* Submit Button */}
               <TouchableOpacity
                 style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
@@ -293,7 +258,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text style={styles.submitText}>Create Account ✦</Text>
+                    <Text style={styles.submitText}>Continue  →</Text>
                     <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerTranslate }, { skewX: '-20deg' }] } ]} />
                   </>
                 )}

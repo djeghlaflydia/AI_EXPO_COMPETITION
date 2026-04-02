@@ -101,16 +101,16 @@ export default function HealthScreen({ navigation, route }: Props) {
   };
 
   const handleNext = () => {
-    const selectedConditions  = conditions.filter((c) => c.selected).map((c) => c.name);
-    const selectedDiet        = dietTags.filter((d) => d.selected).map((d) => d.label);
-    const selectedFoodPrefs   = foodPrefs.filter((f) => f.selected).map((f) => f.label);
+    const selectedConditions = conditions.filter((c) => c.selected).map((c) => c.name);
+    const selectedDiet = dietTags.filter((d) => d.selected).map((d) => d.label);
+    const selectedFoodPrefs = foodPrefs.filter((f) => f.selected).map((f) => f.label);
 
     navigation.navigate('Budget', {
-      ...route.params,
-      healthConditions:    selectedConditions,
+      ...route.params,  // This now contains email and name from Signup
+      healthConditions: selectedConditions,
       otherConditions,
       dietaryRestrictions: [...selectedDiet, otherDiet].filter(Boolean).join(', '),
-      foodPreferences:     selectedFoodPrefs.join(', '),
+      foodPreferences: selectedFoodPrefs.join(', '),
     });
   };
 
@@ -125,19 +125,19 @@ export default function HealthScreen({ navigation, route }: Props) {
           </TouchableOpacity>
 
           <View style={styles.stepPills}>
-            {[0, 1, 2, 3].map((i) => (
+            {[0, 1, 2].map((i) => (
               <View
                 key={i}
                 style={[
                   styles.stepPill,
-                  i < 3  && styles.stepPillDone,
-                  i === 3 && styles.stepPillActive,
+                  i < 1  && styles.stepPillDone,
+                  i === 1 && styles.stepPillActive,
                 ]}
               />
             ))}
           </View>
 
-          <Text style={styles.title}>Health{'\n'}Profile</Text>
+          <Text style={styles.title}>Health Profile</Text>
           <Text style={styles.subtitle}>Helps us recommend meals that are safe for you</Text>
         </View>
 

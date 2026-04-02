@@ -1,60 +1,30 @@
-// navigation/AuthNavigator.tsx
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import WelcomeOnboardingScreen from '../screens/auth/WelcomeOnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
-import ProfileInfoScreen from '../screens/auth/ProfileInfoScreen';
-import LifestyleScreen from '../screens/auth/LifestyleScreen';
 import HealthScreen from '../screens/auth/HealthScreen';
 import BudgetScreen from '../screens/auth/BudgetScreen';
-import OnboardingWizardScreen from '../screens/auth/OnboardingWizardScreen';
 import AILoadingScreen from '../screens/auth/AILoadingScreen';
+
+import OnboardingWizardScreen from '../screens/auth/OnboardingWizardScreen';
 
 export type AuthStackParamList = {
   WelcomeOnboarding: undefined;
+  OnboardingWizard: undefined;
   Login: undefined;
   Signup: undefined;
-  ProfileInfo: {
-    email?: string;
-    name?: string;
-    age?: number;
-  };
-  Lifestyle: {
-    email?: string;
-    name?: string;
-    age?: number;
-    height?: number;
-    weight?: number;
-    gender?: string;
-    goal?: string;
-  };
   Health: {
     email?: string;
     name?: string;
-    age?: number;
-    height?: number;
-    weight?: number;
-    gender?: string;
-    goal?: string;
-    workType?: string;
-    activityLevel?: string;
   };
   Budget: {
     email?: string;
     name?: string;
-    age?: number;
-    height?: number;
-    weight?: number;
-    gender?: string;
-    goal?: string;
-    workType?: string;
-    activityLevel?: string;
     healthConditions?: string[];
     otherConditions?: string;
     dietaryRestrictions?: string;
     foodPreferences?: string;
   };
-  OnboardingWizard: undefined;
   AILoading: undefined;
 };
 
@@ -85,27 +55,17 @@ export default function AuthNavigator() {
       <Stack.Screen 
         name="Signup" 
         component={SignupScreen} 
-        options={{ title: 'Create Account' }}
-      />
-      <Stack.Screen 
-        name="ProfileInfo" 
-        component={ProfileInfoScreen} 
-        options={{ title: 'Profile Information' }}
-      />
-      <Stack.Screen 
-        name="Lifestyle" 
-        component={LifestyleScreen} 
-        options={{ title: 'Lifestyle & Activity' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="Health" 
         component={HealthScreen} 
-        options={{ title: 'Health Profile' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="Budget" 
         component={BudgetScreen} 
-        options={{ title: 'Monthly Budget' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="OnboardingWizard" 
