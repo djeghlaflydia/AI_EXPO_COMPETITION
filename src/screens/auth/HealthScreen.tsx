@@ -8,11 +8,11 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
-import { colors, spacing } from '../../theme/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Health'>;
@@ -22,216 +22,430 @@ type Props = {
 type HealthCondition = {
   id: string;
   name: string;
+  icon: string;
   selected: boolean;
 };
 
-export default function HealthScreen({ navigation, route }: Props) {
-  const [conditions, setConditions] = useState<HealthCondition[]>([
-    { id: 'diabetes', name: 'Diabetes', selected: false },
-    { id: 'hypertension', name: 'Hypertension', selected: false },
-    { id: 'cholesterol', name: 'High Cholesterol', selected: false },
-    { id: 'celiac', name: 'Celiac Disease', selected: false },
-    { id: 'allergies', name: 'Food Allergies', selected: false },
-    { id: 'kidney', name: 'Kidney Disease', selected: false },
-    { id: 'thyroid', name: 'Thyroid Issues', selected: false },
-    { id: 'heart', name: 'Heart Disease', selected: false },
-  ]);
-  const [otherConditions, setOtherConditions] = useState('');
-  const [dietaryRestrictions, setDietaryRestrictions] = useState('');
-  const [foodPreferences, setFoodPreferences] = useState('');
+type DietTag = {
+  id: string;
+  label: string;
+  selected: boolean;
+};
 
-  const toggleCondition = (id: string) => {
-    setConditions(prev =>
-      prev.map(condition =>
-        condition.id === id
-          ? { ...condition, selected: !condition.selected }
-          : condition
-      )
-    );
+type FoodPref = {
+  id: string;
+  label: string;
+  selected: boolean;
+};
+
+const HEALIZA = {
+  dark:    '#2D4A3E',
+  mid:     '#3D6354',
+  lightBg: '#F5F0E8',
+  surface: '#FFFFFF',
+  accent:  '#E07A4D',
+  text:    '#1C2E26',
+  muted:   '#7A9488',
+  border:  '#D8E4DF',
+  inputBg: '#F8F5EF',
+};
+
+const INITIAL_CONDITIONS: HealthCondition[] = [
+  { id: 'diabetes',     name: 'Diabetes',         icon: '🩸', selected: false },
+  { id: 'hypertension', name: 'Hypertension',      icon: '❤️', selected: false },
+  { id: 'cholesterol',  name: 'High Cholesterol',  icon: '🫀', selected: false },
+  { id: 'celiac',       name: 'Celiac Disease',    icon: '🌾', selected: false },
+  { id: 'allergies',    name: 'Food Allergies',    icon: '⚠️', selected: false },
+  { id: 'kidney',       name: 'Kidney Disease',    icon: '🫘', selected: false },
+  { id: 'thyroid',      name: 'Thyroid Issues',    icon: '🦋', selected: false },
+  { id: 'heart',        name: 'Heart Disease',     icon: '💗', selected: false },
+  { id: 'ibs',          name: 'IBS / Gut Issues',  icon: '🫁', selected: false },
+  { id: 'anemia',       name: 'Anemia',            icon: '🔴', selected: false },
+];
+
+const DIET_TAGS: DietTag[] = [
+  { id: 'halal',       label: 'Halal',       selected: false },
+  { id: 'vegetarian',  label: 'Vegetarian',  selected: false },
+  { id: 'vegan',       label: 'Vegan',       selected: false },
+  { id: 'gluten_free', label: 'Gluten-free', selected: false },
+  { id: 'dairy_free',  label: 'Dairy-free',  selected: false },
+  { id: 'no_pork',     label: 'No Pork',     selected: false },
+  { id: 'keto',        label: 'Keto',        selected: false },
+  { id: 'low_carb',    label: 'Low-carb',    selected: false },
+];
+
+const FOOD_PREFS: FoodPref[] = [
+  { id: 'spicy',      label: '🌶 Spicy',      selected: false },
+  { id: 'sweet',      label: '🍯 Sweet',      selected: false },
+  { id: 'salty',      label: '🧂 Salty',      selected: false },
+  { id: 'savory',     label: '🍖 Savory',     selected: false },
+  { id: 'light',      label: '🥗 Light',      selected: false },
+  { id: 'hearty',     label: '🍲 Hearty',     selected: false },
+  { id: 'seafood',    label: '🐟 Seafood',    selected: false },
+  { id: 'no_seafood', label: '🚫 No Seafood', selected: false },
+];
+
+export default function HealthScreen({ navigation, route }: Props) {
+  const [conditions, setConditions]             = useState<HealthCondition[]>(INITIAL_CONDITIONS);
+  const [dietTags, setDietTags]                 = useState<DietTag[]>(DIET_TAGS);
+  const [foodPrefs, setFoodPrefs]               = useState<FoodPref[]>(FOOD_PREFS);
+  const [otherConditions, setOtherConditions]   = useState('');
+  const [otherDiet, setOtherDiet]               = useState('');
+
+  const toggle = <T extends { id: string; selected: boolean }>(
+    list: T[],
+    setList: React.Dispatch<React.SetStateAction<T[]>>,
+    id: string,
+  ) => {
+    setList(list.map((item) => item.id === id ? { ...item, selected: !item.selected } : item));
   };
 
   const handleNext = () => {
-    const selectedConditions = conditions
-      .filter(c => c.selected)
-      .map(c => c.name);
+    const selectedConditions  = conditions.filter((c) => c.selected).map((c) => c.name);
+    const selectedDiet        = dietTags.filter((d) => d.selected).map((d) => d.label);
+    const selectedFoodPrefs   = foodPrefs.filter((f) => f.selected).map((f) => f.label);
 
     navigation.navigate('Budget', {
       ...route.params,
-      healthConditions: selectedConditions,
+      healthConditions:    selectedConditions,
       otherConditions,
-      dietaryRestrictions,
-      foodPreferences,
+      dietaryRestrictions: [...selectedDiet, otherDiet].filter(Boolean).join(', '),
+      foodPreferences:     selectedFoodPrefs.join(', '),
     });
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
+        {/* ── Header ── */}
         <View style={styles.header}>
-          <Text style={styles.title}>Health Profile</Text>
-          <Text style={styles.subtitle}>
-            This helps us recommend meals that are safe for you
-          </Text>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backArrow}>‹</Text>
+          </TouchableOpacity>
+
+          <View style={styles.stepPills}>
+            {[0, 1, 2, 3].map((i) => (
+              <View
+                key={i}
+                style={[
+                  styles.stepPill,
+                  i < 3  && styles.stepPillDone,
+                  i === 3 && styles.stepPillActive,
+                ]}
+              />
+            ))}
+          </View>
+
+          <Text style={styles.title}>Health{'\n'}Profile</Text>
+          <Text style={styles.subtitle}>Helps us recommend meals that are safe for you</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Health Conditions</Text>
-          <Text style={styles.sectionSubtitle}>
-            Select any conditions you have (optional)
-          </Text>
+        {/* ── Body ── */}
+        <View style={styles.body}>
+
+          {/* ── 1. Health Conditions ── */}
+          <Text style={styles.sectionLabel}>HEALTH CONDITIONS</Text>
+          <Text style={styles.sectionSub}>Select any that apply — optional</Text>
           <View style={styles.conditionsGrid}>
-            {conditions.map((condition) => (
+            {conditions.map((c) => (
               <TouchableOpacity
-                key={condition.id}
-                style={[
-                  styles.conditionChip,
-                  condition.selected && styles.conditionChipActive,
-                ]}
-                onPress={() => toggleCondition(condition.id)}
+                key={c.id}
+                style={[styles.condChip, c.selected && styles.condChipActive]}
+                onPress={() => toggle(conditions, setConditions, c.id)}
+                activeOpacity={0.75}
               >
-                <Text
-                  style={[
-                    styles.conditionText,
-                    condition.selected && styles.conditionTextActive,
-                  ]}
-                >
-                  {condition.name}
+                <Text style={styles.condChipIcon}>{c.icon}</Text>
+                <Text style={[styles.condChipText, c.selected && styles.condChipTextActive]}>
+                  {c.name}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Other Conditions</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Please specify any other conditions"
-            placeholderTextColor={colors.textSecondary}
-            value={otherConditions}
-            onChangeText={setOtherConditions}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
+          {/* Other conditions input */}
+          <View style={styles.inputWrap}>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Other conditions… (optional)"
+              placeholderTextColor={HEALIZA.muted}
+              value={otherConditions}
+              onChangeText={setOtherConditions}
+              multiline
+              numberOfLines={2}
+            />
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dietary Restrictions</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="e.g., No pork, vegetarian, vegan, halal only"
-            placeholderTextColor={colors.textSecondary}
-            value={dietaryRestrictions}
-            onChangeText={setDietaryRestrictions}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
+          {/* ── 2. Dietary Restrictions ── */}
+          <Text style={[styles.sectionLabel, { marginTop: 24 }]}>DIETARY RESTRICTIONS</Text>
+          <Text style={styles.sectionSub}>Tap all that apply</Text>
+          <View style={styles.tagsRow}>
+            {dietTags.map((d) => (
+              <TouchableOpacity
+                key={d.id}
+                style={[styles.tag, d.selected && styles.tagActive]}
+                onPress={() => toggle(dietTags, setDietTags, d.id)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.tagText, d.selected && styles.tagTextActive]}>
+                  {d.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.inputWrap}>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Anything else? (e.g., no shellfish, nut-free…)"
+              placeholderTextColor={HEALIZA.muted}
+              value={otherDiet}
+              onChangeText={setOtherDiet}
+              multiline
+              numberOfLines={2}
+            />
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Food Preferences</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Foods you love or hate"
-            placeholderTextColor={colors.textSecondary}
-            value={foodPreferences}
-            onChangeText={setFoodPreferences}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
+          {/* ── 3. Food Preferences ── */}
+          <Text style={[styles.sectionLabel, { marginTop: 24 }]}>FOOD PREFERENCES</Text>
+          <Text style={styles.sectionSub}>What flavors & styles do you enjoy?</Text>
+          <View style={styles.prefGrid}>
+            {foodPrefs.map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={[styles.prefCard, f.selected && styles.prefCardActive]}
+                onPress={() => toggle(foodPrefs, setFoodPrefs, f.id)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.prefText, f.selected && styles.prefTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleNext}>
-          <Text style={styles.buttonText}>Next</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          {/* ── CTA ── */}
+          <TouchableOpacity style={styles.ctaBtn} onPress={handleNext}>
+            <Text style={styles.ctaText}>Continue  →</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.stepHint}>
+            Last step —{' '}
+            <Text style={{ color: HEALIZA.accent, fontWeight: '600' }}>almost done!</Text>
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: HEALIZA.dark,
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: HEALIZA.lightBg,
   },
-  content: {
-    padding: spacing.xl,
-  },
+
+  // ── Header ──
   header: {
-    marginBottom: spacing.xxl,
+    backgroundColor: HEALIZA.dark,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 36,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  backArrow: {
+    color: '#fff',
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  stepPills: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 18,
+  },
+  stepPill: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  stepPillDone: {
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  stepPillActive: {
+    backgroundColor: HEALIZA.accent,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: spacing.sm,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 34,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.6)',
   },
-  section: {
-    marginBottom: spacing.xl,
+
+  // ── Body ──
+  body: {
+    backgroundColor: HEALIZA.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -16,
+    padding: 24,
+    minHeight: 600,
   },
-  sectionTitle: {
-    fontSize: 18,
+  sectionLabel: {
+    fontSize: 11,
     fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs,
+    color: HEALIZA.dark,
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
+  sectionSub: {
+    fontSize: 12,
+    color: HEALIZA.muted,
+    marginBottom: 12,
   },
+
+  // Condition chips
   conditionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 8,
   },
-  conditionChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  condChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: HEALIZA.border,
+    backgroundColor: HEALIZA.inputBg,
   },
-  conditionChipActive: {
-    backgroundColor: colors.secondary,
-    borderColor: colors.secondary,
+  condChipActive: {
+    backgroundColor: 'rgba(45,74,62,0.08)',
+    borderColor: HEALIZA.dark,
   },
-  conditionText: {
-    fontSize: 14,
-    color: colors.text,
+  condChipIcon: {
+    fontSize: 13,
   },
-  conditionTextActive: {
-    color: colors.surface,
+  condChipText: {
+    fontSize: 13,
     fontWeight: '500',
+    color: HEALIZA.muted,
   },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    color: colors.text,
+  condChipTextActive: {
+    color: HEALIZA.dark,
+    fontWeight: '600',
+  },
+
+  // Text input
+  inputWrap: {
+    marginTop: 10,
+    backgroundColor: HEALIZA.inputBg,
+    borderWidth: 1.5,
+    borderColor: HEALIZA.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   textArea: {
-    minHeight: 80,
+    fontSize: 14,
+    color: HEALIZA.text,
+    minHeight: 52,
     textAlignVertical: 'top',
   },
-  button: {
-    backgroundColor: colors.secondary,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: spacing.lg,
+
+  // Diet tags
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  buttonText: {
-    color: colors.surface,
-    fontSize: 18,
-    fontWeight: 'bold',
+  tag: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: HEALIZA.border,
+    backgroundColor: HEALIZA.inputBg,
+  },
+  tagActive: {
+    backgroundColor: 'rgba(224,122,77,0.1)',
+    borderColor: HEALIZA.accent,
+  },
+  tagText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: HEALIZA.muted,
+  },
+  tagTextActive: {
+    color: HEALIZA.accent,
+    fontWeight: '600',
+  },
+
+  // Food preference cards
+  prefGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  prefCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: HEALIZA.border,
+    backgroundColor: HEALIZA.inputBg,
+  },
+  prefCardActive: {
+    backgroundColor: 'rgba(45,74,62,0.08)',
+    borderColor: HEALIZA.dark,
+  },
+  prefText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: HEALIZA.muted,
+  },
+  prefTextActive: {
+    color: HEALIZA.dark,
+    fontWeight: '600',
+  },
+
+  // CTA
+  ctaBtn: {
+    marginTop: 28,
+    backgroundColor: HEALIZA.dark,
+    paddingVertical: 16,
+    borderRadius: 18,
+    alignItems: 'center',
+  },
+  ctaText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  stepHint: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: HEALIZA.muted,
+    marginTop: 14,
+    marginBottom: 8,
   },
 });

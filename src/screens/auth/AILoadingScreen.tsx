@@ -1,22 +1,14 @@
 // screens/auth/AILoadingScreen.tsx
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Easing,
-  Dimensions,
-  SafeAreaView,
-  StatusBar,
-} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Easing, Dimensions, SafeAreaView, StatusBar } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
-import { colors, spacing } from '../../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, spacing } from '../../theme/theme';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'AILoading'>;
@@ -28,59 +20,7 @@ export default function AILoadingScreen({ navigation }: Props) {
   const pulseValue = useRef(new Animated.Value(1)).current;
   const progressValue = useRef(new Animated.Value(0)).current;
   const fadeValue = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Spin animation for the icon
-    Animated.loop(
-      Animated.timing(spinValue, {
-        toValue: 1,
-        duration: 2000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // Pulse animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseValue, {
-          toValue: 1.2,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseValue, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Progress bar animation
-    Animated.timing(progressValue, {
-      toValue: 1,
-      duration: 3000,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-      useNativeDriver: false,
-    }).start(() => {
-      // Navigate to main app after loading
-      setTimeout(() => {
-        signIn();
-      }, 500);
-    });
-
-    // Fade in messages
-    Animated.timing(fadeValue, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  const spin = spinValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
 
   const messages = [
     'Analyzing your profile...',
@@ -90,57 +30,96 @@ export default function AILoadingScreen({ navigation }: Props) {
     'Creating personalized meal plan...',
   ];
 
+  useEffect(() => {
+    // Spin animation
+    Animated.loop(
+      Animated.timing(spinValue, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true })
+    ).start();
+
+    // Pulse + glow
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseValue, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseValue, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Fade-in messages
+    Animated.timing(fadeValue, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+
+    // Progress bar + message cycle
+    const totalDuration = messages.length * 2000;
+    Animated.timing(progressValue, { toValue: 1, duration: totalDuration, useNativeDriver: false }).start();
+
+    const messageInterval = setInterval(() => {
+      fadeValue.setValue(0);
+      setCurrentMessageIndex((prev) => (prev + 1) % messages.length);
+      Animated.timing(fadeValue, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+    }, 2000);
+
+    const finishTimeout = setTimeout(() => {
+      clearInterval(messageInterval);
+      signIn(); // الانتقال بعد الانتهاء
+    }, totalDuration + 500);
+
+    return () => {
+      clearInterval(messageInterval);
+      clearTimeout(finishTimeout);
+    };
+  }, []);
+
+  const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const progressWidth = progressValue.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor="#2D4A3E" />
       
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={['#2D4A3E', '#3D6354']}
+        style={StyleSheet.absoluteFill}
+      />
+
       <View style={styles.content}>
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            {
-              transform: [{ scale: pulseValue }],
-            },
-          ]}
-        >
-          <Animated.View style={{ transform: [{ rotate: spin }] }}>
-            <Ionicons name="nutrition-outline" size={80} color={colors.secondary} />
-          </Animated.View>
+        {/* Icon with glow */}
+        <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseValue }] }]}>
+          <LinearGradient colors={['#E07A4D', '#F5C490']} style={styles.iconGradient}>
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <Ionicons name="nutrition-outline" size={80} color="#fff" />
+            </Animated.View>
+          </LinearGradient>
         </Animated.View>
 
         <Text style={styles.title}>Creating Your Personalized Plan</Text>
-        
+
+        {/* Gradient Progress Bar */}
         <View style={styles.progressContainer}>
-          <Animated.View
-            style={[
-              styles.progressBar,
-              {
-                width: progressValue.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
+          <LinearGradient
+            colors={['#E07A4D', '#F5C490']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.progressBar, { width: progressWidth }]}
           />
         </View>
 
-        <Animated.View style={{ opacity: fadeValue }}>
-          <Text style={styles.message}>
-            {messages[Math.floor(Date.now() / 1000) % messages.length]}
-          </Text>
-        </Animated.View>
+        {/* Animated message */}
+        <Animated.Text style={[styles.message, { opacity: fadeValue }]}>
+          {messages[currentMessageIndex]}
+        </Animated.Text>
 
+        {/* Features */}
         <View style={styles.featuresContainer}>
           <View style={styles.featureItem}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+            <Ionicons name="checkmark-circle" size={20} color="#F5C490" />
             <Text style={styles.featureText}>Algerian local ingredients</Text>
           </View>
           <View style={styles.featureItem}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+            <Ionicons name="checkmark-circle" size={20} color="#F5C490" />
             <Text style={styles.featureText}>Budget-optimized meals</Text>
           </View>
           <View style={styles.featureItem}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+            <Ionicons name="checkmark-circle" size={20} color="#F5C490" />
             <Text style={styles.featureText}>Health-conscious recipes</Text>
           </View>
         </View>
@@ -150,62 +129,27 @@ export default function AILoadingScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
+  container: { flex: 1 },
+  content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   iconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: colors.secondary + '15',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.xxl,
+    shadowColor: '#F5C490',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 15,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  progressContainer: {
-    width: width - spacing.xxl * 2,
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: spacing.xl,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: colors.secondary,
-    borderRadius: 2,
-  },
-  message: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xxl,
-  },
-  featuresContainer: {
-    gap: spacing.md,
-    marginTop: spacing.xxl,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  featureText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
+  iconGradient: { flex: 1, width: '100%', height: '100%', borderRadius: 80, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 26, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: spacing.xl },
+  progressContainer: { width: width - spacing.xxl * 2, height: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, marginBottom: spacing.xl },
+  progressBar: { height: '100%', borderRadius: 3 },
+  message: { fontSize: 18, color: '#F5C490', textAlign: 'center', marginBottom: spacing.xxl, fontStyle: 'italic' },
+  featuresContainer: { gap: spacing.md, marginTop: spacing.xxl },
+  featureItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  featureText: { fontSize: 15, color: '#fff' },
 });
