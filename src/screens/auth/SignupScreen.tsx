@@ -26,7 +26,7 @@ export default function SignupScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
 
-// In SignupScreen.tsx, update the handleSignup function
+// SignupScreen.tsx - Modifiez la fonction handleSignup
 const handleSignup = () => {
   if (!email || !password || !confirmPassword || !name || !age) {
     Alert.alert('Error', 'Please fill in all fields');
@@ -43,8 +43,12 @@ const handleSignup = () => {
     return;
   }
 
-  // Navigate to the enhanced onboarding wizard
-  navigation.navigate('OnboardingWizard');
+  // Navigate to ProfileInfo directly (not OnboardingWizard)
+  navigation.navigate('ProfileInfo', {
+    email: email,
+    name: name,
+    age: parseInt(age)
+  });
 };
 
   return (

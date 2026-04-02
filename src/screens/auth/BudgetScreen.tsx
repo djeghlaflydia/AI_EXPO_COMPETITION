@@ -23,44 +23,29 @@ export default function BudgetScreen({ navigation, route }: Props) {
   const [budget, setBudget] = useState('');
   const [familySize, setFamilySize] = useState('1');
   const [additionalNotes, setAdditionalNotes] = useState('');
+const handleComplete = async () => {
+  if (!budget) {
+    Alert.alert('Error', 'Please enter your monthly food budget');
+    return;
+  }
 
-  const handleComplete = async () => {
-    if (!budget) {
-      Alert.alert('Error', 'Please enter your monthly food budget');
-      return;
-    }
+  const budgetNumber = parseInt(budget);
+  if (isNaN(budgetNumber) || budgetNumber <= 0) {
+    Alert.alert('Error', 'Please enter a valid budget amount');
+    return;
+  }
 
-    const budgetNumber = parseInt(budget);
-    if (isNaN(budgetNumber) || budgetNumber <= 0) {
-      Alert.alert('Error', 'Please enter a valid budget amount');
-      return;
-    }
-
-    // Prepare complete user profile
-    const completeProfile = {
-      ...route.params,
-      monthlyBudget: budgetNumber,
-      familySize: parseInt(familySize),
-      additionalNotes,
-    };
-
-    console.log('Complete Profile:', completeProfile);
-    
-    // TODO: Save to backend and navigate to main app
-    Alert.alert(
-      'Success!',
-      'Your profile has been created. Our AI will generate your personalized meal plan.',
-      [
-        {
-          text: 'Continue',
-          onPress: () => {
-            // Navigate to main app
-            // navigation.replace('MainTabs');
-          },
-        },
-      ]
-    );
+  const completeProfile = {
+    ...route.params,
+    monthlyBudget: budgetNumber,
+    familySize: parseInt(familySize),
+    additionalNotes,
   };
+
+  console.log('Complete Profile:', completeProfile);
+  
+  navigation.navigate('AILoading');
+};
 
   return (
     <ScrollView style={styles.container}>
@@ -121,7 +106,7 @@ export default function BudgetScreen({ navigation, route }: Props) {
         </View>
 
         <TouchableOpacity style={styles.button} onPress={handleComplete}>
-          <Text style={styles.buttonText}>Generate My Meal Plan</Text>
+          <Text style={styles.buttonText}>continuer</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
