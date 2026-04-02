@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   StatusBar, SafeAreaView, TouchableOpacity, Image, Alert,
-  Platform,
+  Platform, TextInput,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 
@@ -15,7 +15,7 @@ const COLORS = {
   red: '#E63946', redPale: '#FDECEA',
 };
 
-// ── Info Row ───────────────────────────────────────────
+// ── Info Row (affichage statique) ─────────────────────
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
@@ -25,14 +25,23 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ── Editable Row ───────────────────────────────────────
-function EditableRow({ label, value, onChange }: {
-  label: string; value: string; onChange: (v: string) => void;
+// ── Editable Row (avec TextInput) ─────────────────────
+function EditableInputRow({ label, value, onChange, keyboardType = 'default' }: { 
+  label: string; 
+  value: string; 
+  onChange: (text: string) => void;
+  keyboardType?: 'default' | 'numeric' | 'email-address';
 }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={[styles.infoValue, styles.editableValue]}>{value} ✎</Text>
+      <TextInput
+        style={styles.editableInput}
+        value={value}
+        onChangeText={onChange}
+        keyboardType={keyboardType}
+        placeholderTextColor={COLORS.textMuted}
+      />
     </View>
   );
 }
@@ -50,7 +59,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 // ── Profile Screen ─────────────────────────────────────
 export default function ProfileScreen() {
-  const { signOut, isAuthenticated } = useAuth();
+  const { signOut } = useAuth();
   const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName]     = useState('Ahmed Benali');
   const [age, setAge]       = useState('28');
@@ -65,13 +74,9 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    console.log('Logout button pressed');
-    
-    // Utiliser confirm sur web, Alert sur mobile
     if (Platform.OS === 'web') {
       const confirmLogout = window.confirm('Are you sure you want to log out?');
       if (confirmLogout) {
-        console.log('User confirmed logout');
         signOut();
       }
     } else {
@@ -79,23 +84,19 @@ export default function ProfileScreen() {
         'Log Out',
         'Are you sure you want to log out?',
         [
-          { 
-            text: 'Cancel', 
-            style: 'cancel',
-            onPress: () => console.log('Logout cancelled')
-          },
-          { 
-            text: 'Yes, Log Out', 
-            style: 'destructive',
-            onPress: () => {
-              console.log('User confirmed logout');
-              signOut();
-            }
-          },
-        ],
-        { cancelable: true }
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Yes, Log Out', style: 'destructive', onPress: () => signOut() },
+        ]
       );
     }
+  };
+
+  const handleSave = () => {
+    // Ici vous pouvez sauvegarder les modifications
+    console.log('Saving profile:', { name, age, weight, height });
+    setEditMode(false);
+    // TODO: Appeler API pour sauvegarder
+    alert('Profile saved!');
   };
 
   return (
@@ -111,7 +112,7 @@ export default function ProfileScreen() {
           </View>
           <TouchableOpacity
             style={[styles.editBtn, editMode && styles.editBtnActive]}
-            onPress={() => setEditMode(e => !e)}
+            onPress={editMode ? handleSave : () => setEditMode(true)}
           >
             <Text style={[styles.editBtnText, editMode && styles.editBtnTextActive]}>
               {editMode ? 'Save' : 'Edit'}
@@ -166,18 +167,18 @@ export default function ProfileScreen() {
         <SectionCard title="Basic Info">
           {editMode ? (
             <>
-              <EditableRow label="Full Name" value={name}   onChange={setName}   />
-              <EditableRow label="Age"        value={age}    onChange={setAge}    />
-              <EditableRow label="Weight (kg)" value={weight} onChange={setWeight} />
-              <EditableRow label="Height (cm)" value={height} onChange={setHeight} />
+              <EditableInputRow label="Full Name" value={name} onChange={setName} />
+              <EditableInputRow label="Age" value={age} onChange={setAge} keyboardType="numeric" />
+              <EditableInputRow label="Weight (kg)" value={weight} onChange={setWeight} keyboardType="numeric" />
+              <EditableInputRow label="Height (cm)" value={height} onChange={setHeight} keyboardType="numeric" />
             </>
           ) : (
             <>
-              <InfoRow label="Full Name"    value={name}         />
-              <InfoRow label="Age"          value={`${age} years`} />
-              <InfoRow label="Weight"       value={`${weight} kg`} />
-              <InfoRow label="Height"       value={`${height} cm`} />
-              <InfoRow label="BMI"          value={`${bmi} — Normal`} />
+              <InfoRow label="Full Name" value={name} />
+              <InfoRow label="Age" value={`${age} years`} />
+              <InfoRow label="Weight" value={`${weight} kg`} />
+              <InfoRow label="Height" value={`${height} cm`} />
+              <InfoRow label="BMI" value={`${bmi} — ${getBMICategory(parseFloat(bmi))}`} />
             </>
           )}
         </SectionCard>
@@ -186,15 +187,15 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Diet & Health</Text>
         <SectionCard title="Health Profile">
           <InfoRow label="Activity Level" value="Moderately Active" />
-          <InfoRow label="Goal"           value="Lose Weight"       />
-          <InfoRow label="Diet Type"      value="Balanced"          />
-          <InfoRow label="Daily Calories" value="2,200 kcal"        />
+          <InfoRow label="Goal" value="Lose Weight" />
+          <InfoRow label="Diet Type" value="Balanced" />
+          <InfoRow label="Daily Calories" value="2,200 kcal" />
         </SectionCard>
 
         {/* Budget */}
         <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Budget</Text>
         <SectionCard title="Financial Limits">
-          <InfoRow label="Daily Budget"   value="800 DA"    />
+          <InfoRow label="Daily Budget" value="800 DA" />
           <InfoRow label="Monthly Budget" value="15,000 DA" />
         </SectionCard>
 
@@ -211,6 +212,14 @@ export default function ProfileScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+// Fonction utilitaire pour la catégorie BMI
+function getBMICategory(bmi: number): string {
+  if (bmi < 18.5) return 'Underweight';
+  if (bmi < 25) return 'Normal';
+  if (bmi < 30) return 'Overweight';
+  return 'Obese';
 }
 
 // ── Styles ─────────────────────────────────────────────
@@ -431,6 +440,18 @@ const styles = StyleSheet.create({
     fontSize: 14, 
     fontWeight: '600', 
     color: COLORS.textDark 
+  },
+
+  editableInput: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.greenMid,
+    backgroundColor: COLORS.greenPale,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 100,
+    textAlign: 'right',
   },
   
   editableValue: { 
