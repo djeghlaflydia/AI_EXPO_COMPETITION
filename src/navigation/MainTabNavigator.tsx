@@ -59,7 +59,7 @@ export default function MainTabNavigator() {
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="MealPlan" component={MealPlanScreen} options={{ title: 'Meal Plan' }} />
       <Tab.Screen name="GroceryList" component={GroceryListScreen} options={{ title: 'Grocery' }} />
-      {/*<Tab.Screen name="Progress" component={ProgressScreen} />*/}
+      <Tab.Screen name="Progress" component={ProgressScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
