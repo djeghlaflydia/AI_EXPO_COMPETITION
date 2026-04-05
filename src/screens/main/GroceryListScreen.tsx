@@ -18,7 +18,7 @@ const INITIAL_CATEGORIES: Category[] = [
   {
     title: 'Lkhodra', emoji: '🥦', accentColor: COLORS.greenMid,
     items: [
-      { name: 'Bessla (Onions)', qty: '1 kg',  price: 80,  checked: false },
+      { name: 'Onions', qty: '1 kg',  price: 80,  checked: false },
       { name: 'Tomatoes',        qty: '2 kg',  price: 160, checked: true  },
       { name: 'Potatoes',        qty: '1.5 kg',price: 120, checked: false },
       { name: 'Carrots',         qty: '500 g', price: 60,  checked: false },

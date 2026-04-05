@@ -76,7 +76,7 @@ type Props = {
 };
 
 export default function SignupScreen({ navigation }: Props) {
-  const { signIn } = useAuth();
+  const { registerOnly } = useAuth();
   const [fullName,     setFullName]     = useState('');
   const [email,        setEmail]        = useState('');
   const [password,     setPassword]     = useState('');
@@ -116,6 +116,9 @@ export default function SignupScreen({ navigation }: Props) {
   }, []);
 
   const handleSignup = async () => {
+    console.log('Signup button pressed');
+    console.log('Form data:', { fullName, email, password, confirmPwd });
+    
     // 1. Validation
     if (!fullName || !email || !password || !confirmPwd) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -134,16 +137,30 @@ export default function SignupScreen({ navigation }: Props) {
       return;
     }
 
+    console.log('Validation passed, starting signup...');
     setIsLoading(true);
-  
-  setTimeout(() => {
-    setIsLoading(false);
-    navigation.navigate('Health', {
-      email: email,
-      name: fullName,
-    });
-  }, 1200);
-};
+    
+    try {
+      console.log('Calling registerOnly function...');
+      const result = await registerOnly(fullName, email, password);
+      console.log('Signup result:', result);
+      if (result.success) {
+        // Navigate to Health screen after successful signup without setting auth yet
+        Alert.alert('Success', result.message);
+        navigation.navigate('Health', { 
+          email: email, 
+          name: fullName 
+        });
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const shimmerTranslate = shimmer.interpolate({
     inputRange: [-1, 2],
@@ -259,7 +276,7 @@ export default function SignupScreen({ navigation }: Props) {
                 ) : (
                   <>
                     <Text style={styles.submitText}>Continue  →</Text>
-                    <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerTranslate }, { skewX: '-20deg' }] } ]} />
+                    <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerTranslate }] } ]} />
                   </>
                 )}
               </TouchableOpacity>

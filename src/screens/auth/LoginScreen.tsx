@@ -153,11 +153,21 @@ export default function LoginScreen({ navigation }: Props) {
       Alert.alert('Error', 'Please enter your email and password');
       return;
     }
+    
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const result = await signIn(email, password);
+      if (result.success) {
+        // Navigation will be handled by the auth context
+        Alert.alert('Success', result.message);
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
       setIsLoading(false);
-      signIn();
-    }, 1500);
+    }
   };
 
   const shimmerTranslate = shimmer.interpolate({
@@ -263,7 +273,7 @@ export default function LoginScreen({ navigation }: Props) {
                   ) : (
                     <>
                       <Text style={styles.submitText}>Sign In</Text>
-                      <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerTranslate }, { skewX: '-20deg' }] }]} />
+                      <Animated.View style={[styles.shimmer, { transform: [{ translateX: shimmerTranslate }] }]} />
                     </>
                   )}
                 </TouchableOpacity>

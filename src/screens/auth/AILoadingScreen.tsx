@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function AILoadingScreen({ navigation }: Props) {
-  const { signIn } = useAuth();
+  const { completeAuth } = useAuth();
   const spinValue = useRef(new Animated.Value(0)).current;
   const pulseValue = useRef(new Animated.Value(1)).current;
   const progressValue = useRef(new Animated.Value(0)).current;
@@ -57,9 +57,9 @@ export default function AILoadingScreen({ navigation }: Props) {
       Animated.timing(fadeValue, { toValue: 1, duration: 800, useNativeDriver: true }).start();
     }, 2000);
 
-    const finishTimeout = setTimeout(() => {
+    const finishTimeout = setTimeout(async () => {
       clearInterval(messageInterval);
-      signIn(); // الانتقال بعد الانتهاء
+      await completeAuth(); // Complete authentication after loading
     }, totalDuration + 500);
 
     return () => {
