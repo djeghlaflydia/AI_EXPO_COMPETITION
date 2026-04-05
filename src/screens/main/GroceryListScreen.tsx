@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  StatusBar, SafeAreaView, TouchableOpacity,
+  StatusBar, SafeAreaView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { groceryAPI } from '../../services/api';
 
 const COLORS = {
   greenDark: '#1B4332', greenMid: '#2D6A4F', greenSoft: '#74C69D',
@@ -51,27 +53,157 @@ const INITIAL_CATEGORIES: Category[] = [
 ];
 
 export default function GroceryListScreen() {
+  const { user, profileData } = useAuth();
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Get current date dynamically
+  const getCurrentDate = () => {
+    const today = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    };
+    return today.toLocaleDateString('en-US', options);
+  };
+
+  // Generate personalized grocery list based on user profile
+  const generatePersonalizedList = () => {
+    const personalizedCategories = [...INITIAL_CATEGORIES];
+
+    // Adjust quantities based on family size
+    if (profileData?.familySize && profileData.familySize > 1) {
+      const familyMultiplier = profileData.familySize / 4; // Base is 4 people
+      
+      personalizedCategories.forEach(category => {
+        category.items.forEach(item => {
+          const baseQuantity = parseInt(item.qty);
+          item.qty = `${Math.round(baseQuantity * familyMultiplier)} ${item.qty.split(' ')[1]}`;
+        });
+      });
+    }
+
+    // Add health-specific items
+    if (profileData?.healthConditions?.includes('diabetes')) {
+      personalizedCategories[0].items.push({ // Add to Lkhodra
+        name: 'Bitter Melon',
+        qty: '2 pieces',
+        price: 120,
+        checked: false,
+      });
+    }
+
+    // Adjust for dietary restrictions
+    if (profileData?.dietaryRestrictions?.includes('gluten-free')) {
+      // Remove gluten items and add alternatives
+      personalizedCategories[3].items = personalizedCategories[3].items.filter(
+        item => !item.name.toLowerCase().includes('bread')
+      );
+      personalizedCategories[3].items.push({
+        name: 'Gluten-Free Bread',
+        qty: '2 loaves',
+        price: 400,
+        checked: false,
+      });
+    }
+
+    // Adjust prices based on budget
+    if (profileData?.monthlyBudget) {
+      const weeklyBudget = profileData.monthlyBudget / 4;
+      const budgetFactor = weeklyBudget / 15000; // 15000 DA is default weekly budget
+      
+      personalizedCategories.forEach(category => {
+        category.items.forEach(item => {
+          item.price = Math.round(item.price * budgetFactor);
+        });
+      });
+    }
+
+    return personalizedCategories;
+  };
+
+  const personalizedCategories = generatePersonalizedList();
+
+  useEffect(() => {
+    loadGroceryList();
+  }, []);
+
+  const loadGroceryList = async () => {
+    // For now, skip API call since user.id is not available
+    // TODO: Re-enable when user authentication is properly implemented
+    console.log('Skipping grocery list API call for now');
+    
+    // Use personalized grocery list based on user profile
+    setCategories(personalizedCategories);
+    setLoading(false);
+    console.log('Using personalized grocery list data:', personalizedCategories);
+    console.log('Based on user profile:', profileData);
+    
+    return;
+
+    // Original code (commented out for now)
+    /*
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await groceryAPI.getGroceryList(user.id);
+      console.log('Grocery list data loaded:', data);
+      // You can update categories with real data here
+    } catch (err) {
+      console.error('Error loading grocery list:', err);
+      setError('Failed to load grocery list');
+    } finally {
+      setLoading(false);
+    }
+    */
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.greenSoft} />
+          <Text style={styles.loadingText}>Loading grocery list...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const toggleItem = (catIdx: number, itemIdx: number) => {
-    setCategories(prev =>
-      prev.map((cat, ci) =>
-        ci !== catIdx ? cat : {
-          ...cat,
-          items: cat.items.map((item, ii) =>
-            ii !== itemIdx ? item : { ...item, checked: !item.checked }
+    setCategories((prevCategories: Category[]) =>
+      prevCategories.map((category: Category, categoryIndex: number) =>
+        categoryIndex !== catIdx ? category : {
+          ...category,
+          items: category.items.map((item: GroceryItem, itemIndex: number) =>
+            itemIndex !== itemIdx ? item : { ...item, checked: !item.checked }
           ),
         }
       )
     );
   };
 
-  const allItems = categories.flatMap(c => c.items);
+  const allItems = categories.flatMap((c: Category) => c.items);
   const totalItems = allItems.length;
-  const checkedItems = allItems.filter(i => i.checked).length;
-  const totalCost = allItems.reduce((s, i) => s + i.price, 0);
-  const spentCost = allItems.filter(i => i.checked).reduce((s, i) => s + i.price, 0);
-  const budget = 5000;
+  const checkedItems = allItems.filter((i: GroceryItem) => i.checked).length;
+  const totalCost = allItems.reduce((s: number, i: GroceryItem) => s + i.price, 0);
+  const spentCost = allItems.filter((i: GroceryItem) => i.checked).reduce((s: number, i: GroceryItem) => s + i.price, 0);
+  const budget = profileData?.monthlyBudget ? profileData.monthlyBudget / 4 : 5000; // Dynamic budget
   const budgetPct = Math.min((totalCost / budget) * 100, 100);
   const budgetColor = totalCost > budget * 0.9 ? COLORS.peach : COLORS.greenSoft;
 
@@ -84,7 +216,7 @@ export default function GroceryListScreen() {
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.headerTitle}>El Marché</Text>
-            <Text style={styles.headerSub}>Weekly grocery list</Text>
+            <Text style={styles.headerSub}>{getCurrentDate()}</Text>
           </View>
           <View style={styles.progressCircle}>
             <Text style={styles.progressCircleVal}>{checkedItems}</Text>
@@ -127,8 +259,8 @@ export default function GroceryListScreen() {
         </View>
 
         {/* Categories */}
-        {categories.map((cat, ci) => {
-          const catChecked = cat.items.filter(i => i.checked).length;
+        {categories.map((cat: Category, ci: number) => {
+          const catChecked = cat.items.filter((i: GroceryItem) => i.checked).length;
           const catDone = catChecked === cat.items.length;
           return (
             <View key={ci} style={styles.categoryBlock}>
@@ -146,7 +278,7 @@ export default function GroceryListScreen() {
               </View>
 
               {/* Items */}
-              {cat.items.map((item, ii) => (
+              {cat.items.map((item: GroceryItem, ii: number) => (
                 <TouchableOpacity
                   key={ii}
                   activeOpacity={0.7}
@@ -239,7 +371,12 @@ const styles = StyleSheet.create({
 
   tipCard:          { backgroundColor: COLORS.greenDark, borderRadius: 20, padding: 18, flexDirection: 'row', gap: 14, alignItems: 'flex-start', marginTop: 4 },
   tipIcon:          { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  tipStar:          { width: 14, height: 14, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 2, transform: [{ rotate: '45deg' }] },
+  tipStar:          { width: 14, height: 14, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 2, transform: [{ rotate: '45deg' as any }] },
   tipText:          { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 20 },
   tipBold:          { fontWeight: '700', color: COLORS.white },
+
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.greenDark },
+  loadingText: { marginTop: 16, fontSize: 16, color: COLORS.greenSoft },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.greenDark, padding: 20 },
+  errorText: { fontSize: 16, color: COLORS.peach, textAlign: 'center' },
 });

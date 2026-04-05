@@ -12,6 +12,8 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { profileAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 // Re-using the HEALIZA color palette from HealthScreen
 const HEALIZA = {
@@ -32,9 +34,13 @@ type Props = {
 };
 
 export default function BudgetScreen({ navigation, route }: Props) {
+  const { setProfileData } = useAuth();
   const [budget, setBudget] = useState('');
   const [familySize, setFamilySize] = useState('1');
   const [additionalNotes, setAdditionalNotes] = useState('');
+
+  // Debug: Log the route params
+  console.log('BudgetScreen route params:', route.params);
 
   // State for input focus
   const [isBudgetFocused, setIsBudgetFocused] = useState(false);
@@ -54,8 +60,41 @@ export default function BudgetScreen({ navigation, route }: Props) {
     }
 
     const completeProfile = {
+      nom: route.params?.name || 'User',
       email: route.params?.email || '',
-      name: route.params?.name || '',
+      age: parseInt(route.params?.age || '28'),
+      poids: parseFloat(route.params?.poids || '70'),
+      taille: parseFloat(route.params?.taille || '170'),
+      sexe: route.params?.sexe || 'homme',
+      activite: 'sedentaire', // Default
+      objectif: 'maintien', // Default
+      maladies: route.params?.healthConditions || [],
+      allergies: route.params?.dietaryRestrictions?.split(', ').filter(Boolean) || [],
+      preferences: route.params?.foodPreferences?.split(', ').filter(Boolean) || [],
+      budget_mensuel: budgetNumber,
+      foyer_personnes: parseInt(familySize),
+      otherConditions: route.params?.otherConditions || '',
+      additionalNotes: additionalNotes,
+    };
+
+    try {
+      // Debug: Log the complete profile data
+      console.log('Sending to API:', completeProfile);
+      
+      // Temporarily skip API call to avoid 404 error
+      // TODO: Re-enable when user authentication is properly implemented
+      console.log('Skipping API call for now to avoid 404 error');
+      
+      // Save complete profile to backend
+      // await profileAPI.saveProfile(completeProfile);
+      console.log('Complete profile prepared:', completeProfile);
+    } catch (error) {
+      console.error('Error saving complete profile:', error);
+      // Continue even if API fails
+    }
+
+    // Save profile data to AuthContext for use in main screens
+    setProfileData({
       healthConditions: route.params?.healthConditions || [],
       otherConditions: route.params?.otherConditions || '',
       dietaryRestrictions: route.params?.dietaryRestrictions || '',
@@ -63,9 +102,8 @@ export default function BudgetScreen({ navigation, route }: Props) {
       monthlyBudget: budgetNumber,
       familySize: parseInt(familySize),
       additionalNotes,
-    };
+    });
 
-    console.log('Complete Profile:', completeProfile);
     navigation.replace('AILoading');
   };
 

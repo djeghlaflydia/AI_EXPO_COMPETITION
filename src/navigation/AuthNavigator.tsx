@@ -20,6 +20,10 @@ export type AuthStackParamList = {
   Budget: {
     email?: string;
     name?: string;
+    age?: string;
+    poids?: string;
+    taille?: string;
+    sexe?: string;
     healthConditions?: string[];
     otherConditions?: string;
     dietaryRestrictions?: string;

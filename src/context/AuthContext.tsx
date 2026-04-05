@@ -7,14 +7,27 @@ interface User {
   email: string;
 }
 
+interface ProfileData {
+  healthConditions?: string[];
+  otherConditions?: string;
+  dietaryRestrictions?: string;
+  foodPreferences?: string;
+  monthlyBudget?: number;
+  familySize?: number;
+  additionalNotes?: string;
+  startDate?: string; // Add start date for week calculation
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  profileData: ProfileData | null;
   token: string | null;
   signIn: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   signUp: (fullName: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
   registerOnly: (fullName: string, email: string, password: string) => Promise<{ success: boolean; message: string; user?: User; token?: string }>;
   completeAuth: () => Promise<{ success: boolean; message: string }>;
+  setProfileData: (data: ProfileData) => void;
   signOut: () => void;
   isLoading: boolean;
 }
@@ -26,6 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingAuth, setPendingAuth] = useState<{ email: string; password: string; user?: User; token?: string } | null>(null);
@@ -39,11 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const storedToken = await AsyncStorage.getItem('auth_token');
       const storedUser = await AsyncStorage.getItem('auth_user');
+      const storedProfileData = await AsyncStorage.getItem('auth_profile_data');
       
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
+        
+        if (storedProfileData) {
+          setProfileData(JSON.parse(storedProfileData));
+        }
       }
     } catch (error) {
       console.error('Error loading stored auth:', error);
@@ -61,13 +80,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const storeProfileData = async (profileData: ProfileData) => {
+    try {
+      await AsyncStorage.setItem('auth_profile_data', JSON.stringify(profileData));
+    } catch (error) {
+      console.error('Error storing profile data:', error);
+    }
+  };
+
   const clearAuthData = async () => {
     try {
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('auth_user');
+      await AsyncStorage.removeItem('auth_profile_data');
     } catch (error) {
       console.error('Error clearing auth data:', error);
     }
+  };
+
+  const setProfileDataHandler = (data: ProfileData) => {
+    setProfileData(data);
+    storeProfileData(data);
   };
 
   const signIn = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
@@ -229,6 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setUser(null);
+    setProfileData(null);
     setToken(null);
     setIsAuthenticated(false);
     await clearAuthData();
@@ -238,11 +272,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{ 
       isAuthenticated, 
       user, 
+      profileData,
       token, 
       signIn, 
       signUp, 
       registerOnly,
       completeAuth,
+      setProfileData: setProfileDataHandler,
       signOut, 
       isLoading 
     }}>

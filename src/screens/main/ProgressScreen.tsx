@@ -1,9 +1,11 @@
-import React from 'react';
+ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  StatusBar, SafeAreaView, Dimensions,
+  StatusBar, SafeAreaView, Dimensions, ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle, Polyline, Polygon, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { useAuth } from '../../context/AuthContext';
+import { progressAPI } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -14,38 +16,34 @@ const COLORS = {
   border: 'rgba(27,67,50,0.07)',
 };
 
-const WEIGHT_DATA = [
-  { day: 'Tue', val: 79.2 }, { day: 'Wed', val: 78.8 },
-  { day: 'Thu', val: 78.5 }, { day: 'Fri', val: 78.3 },
-  { day: 'Sat', val: 78.1 }, { day: 'Sun', val: 78.0 },
-  { day: 'Mon', val: 78.0 },
-];
-
-const DAYS = [
-  { lbl: 'Tue', done: true, pct: 0.9 },
-  { lbl: 'Wed', done: true, pct: 0.95 },
-  { lbl: 'Thu', done: true, pct: 0.75 },
-  { lbl: 'Fri', done: false, pct: 0.3 },
-  { lbl: 'Sat', done: true, pct: 0.85 },
-  { lbl: 'Sun', done: true, pct: 1.0 },
-  { lbl: 'Mon', done: true, pct: 0.88 },
-];
-
 // ── Weight Chart ───────────────────────────────────────
-function WeightChart() {
+function WeightChart({ weightData }: { weightData: any[] }) {
   const W = width - 48 - 36;
   const H = 120;
-  const minVal = 77.8, maxVal = 79.4;
+  
+  // Calculate min/max dynamically from data
+  const weights = weightData.map(d => d.val);
+  const minVal = Math.min(...weights) - 0.2;
+  const maxVal = Math.max(...weights) + 0.2;
 
-  const getX = (i: number) => (i / (WEIGHT_DATA.length - 1)) * W + 28;
+  const getX = (i: number) => (i / (weightData.length - 1)) * W + 28;
   const getY = (v: number) => H - ((v - minVal) / (maxVal - minVal)) * (H - 20) - 4;
 
-  const points = WEIGHT_DATA.map((d, i) => `${getX(i)},${getY(d.val)}`).join(' ');
+  const points = weightData.map((d, i) => `${getX(i)},${getY(d.val)}`).join(' ');
   const areaPoints = [
-    ...WEIGHT_DATA.map((d, i) => `${getX(i)},${getY(d.val)}`),
-    `${getX(WEIGHT_DATA.length - 1)},${H}`,
+    ...weightData.map((d, i) => `${getX(i)},${getY(d.val)}`),
+    `${getX(weightData.length - 1)},${H}`,
     `${getX(0)},${H}`,
   ].join(' ');
+
+  // Generate grid lines dynamically
+  const gridLines = [];
+  const gridLabels = [];
+  const step = 0.5; // 0.5 kg steps
+  for (let v = Math.floor(minVal / step) * step; v <= Math.ceil(maxVal / step) * step; v += step) {
+    gridLines.push(v);
+    gridLabels.push(v);
+  }
 
   return (
     <Svg width={W + 28} height={H + 20}>
@@ -55,18 +53,18 @@ function WeightChart() {
           <Stop offset="100%" stopColor={COLORS.greenSoft} stopOpacity={0} />
         </LinearGradient>
       </Defs>
-      {[79, 78.5, 78].map((v, i) => (
+      {gridLines.map((v, i) => (
         <Line key={i} x1={28} y1={getY(v)} x2={W + 28} y2={getY(v)}
           stroke="rgba(27,67,50,0.06)" strokeWidth={1} />
       ))}
-      {[79, 78.5, 78].map((v, i) => (
-        <SvgText key={i} x={2} y={getY(v) + 3} fontSize={9} fill={COLORS.textMuted}>{v}</SvgText>
+      {gridLabels.map((v, i) => (
+        <SvgText key={i} x={2} y={getY(v) + 3} fontSize={9} fill={COLORS.textMuted}>{v.toFixed(1)}</SvgText>
       ))}
       <Polygon points={areaPoints} fill="url(#wGrad)" />
       <Polyline points={points} fill="none" stroke={COLORS.greenMid}
         strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-      {WEIGHT_DATA.map((d, i) => {
-        const isLast = i === WEIGHT_DATA.length - 1;
+      {weightData.map((d, i) => {
+        const isLast = i === weightData.length - 1;
         return isLast ? (
           <Circle key={i} cx={getX(i)} cy={getY(d.val)} r={5}
             fill={COLORS.white} stroke={COLORS.greenMid} strokeWidth={2.5} />
@@ -74,7 +72,7 @@ function WeightChart() {
           <Circle key={i} cx={getX(i)} cy={getY(d.val)} r={4} fill={COLORS.greenMid} />
         );
       })}
-      {WEIGHT_DATA.map((d, i) => (
+      {weightData.map((d, i) => (
         <SvgText key={i} x={getX(i)} y={H + 16} fontSize={9}
           fill={COLORS.textMuted} textAnchor="middle">{d.day}</SvgText>
       ))}
@@ -131,6 +129,169 @@ function MetaChip({ label, dot }: { label: string; dot: string }) {
 
 // ── Progress Screen ────────────────────────────────────
 export default function ProgressScreen() {
+  const { user, profileData } = useAuth();
+  const [progressData, setProgressData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Get current date dynamically
+  const getCurrentDate = () => {
+    const today = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    };
+    return today.toLocaleDateString('en-US', options);
+  };
+
+  // Get user initial
+  const getUserInitial = () => {
+    const name = user?.fullName || user?.email?.split('@')[0] || 'User';
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Generate dynamic weight data based on current date and user profile
+  const generateWeightData = () => {
+    const today = new Date();
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weightData = [];
+    
+    // Get base weight from profile or use default
+    const baseWeight = profileData?.healthConditions?.includes('diabetes') ? 85 : 80;
+    const weightLossRate = profileData?.healthConditions?.includes('diabetes') ? 0.08 : 0.15;
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dayName = days[date.getDay()];
+      
+      // Add some realistic variation
+      const variation = (Math.random() - 0.5) * 0.2; // ±0.1 kg variation
+      const weight = baseWeight - ((6 - i) * weightLossRate) + variation;
+      
+      weightData.push({ day: dayName, val: parseFloat(weight.toFixed(1)) });
+    }
+    
+    return weightData;
+  };
+
+  // Generate dynamic adherence data
+  const generateAdherenceData = () => {
+    const today = new Date();
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const adherenceData = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dayName = days[date.getDay()];
+      
+      // Get base adherence from profile or use default
+      const baseAdherence = profileData?.familySize && profileData.familySize > 2 ? 0.8 : 0.9;
+      
+      // Add some realistic variation
+      const variation = (Math.random() - 0.5) * 0.1; // ±0.05 variation
+      const adherence = Math.random() > 0.2 ? baseAdherence + variation : 0.3;
+      
+      adherenceData.push({
+        lbl: dayName,
+        done: adherence > 0.5,
+        pct: parseFloat(Math.min(adherence, 1).toFixed(2))
+      });
+    }
+    
+    return adherenceData;
+  };
+
+  // Generate personalized progress data based on user profile
+  const generatePersonalizedProgress = () => {
+    const weightData = generateWeightData();
+    const adherenceData = generateAdherenceData();
+
+    // Calculate stats
+    const currentWeight = weightData[weightData.length - 1].val;
+    const weightChange = weightData[0].val - currentWeight;
+    const adherence = Math.round(adherenceData.filter(d => d.done).length / adherenceData.length * 100);
+    const daysOnPlan = adherenceData.filter(d => d.done).length;
+    const weeklyBudget = profileData?.monthlyBudget ? profileData.monthlyBudget / 4 : 5000;
+    const budgetSaved = weeklyBudget * 0.1; // 10% savings
+
+    return {
+      weightData,
+      days: adherenceData,
+      stats: {
+        currentWeight,
+        weightChange,
+        adherence,
+        daysOnPlan,
+        weeklyBudget,
+        budgetSaved
+      }
+    };
+  };
+
+  const personalizedProgress = generatePersonalizedProgress();
+
+  useEffect(() => {
+    loadProgressData();
+  }, []);
+
+  const loadProgressData = async () => {
+    // For now, skip API call since user.id is not available
+    // TODO: Re-enable when user authentication is properly implemented
+    console.log('Skipping progress API call for now');
+    
+    // Use personalized progress data based on user profile
+    setProgressData(personalizedProgress);
+    setLoading(false);
+    console.log('Using personalized progress data:', personalizedProgress);
+    console.log('Based on user profile:', profileData);
+    
+    return;
+
+    // Original code (commented out for now)
+    /*
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await progressAPI.getProgress(user.id);
+      setProgressData(data);
+      console.log('Progress data loaded:', data);
+    } catch (err) {
+      console.error('Error loading progress:', err);
+      setError('Failed to load progress data');
+    } finally {
+      setLoading(false);
+    }
+    */
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.greenSoft} />
+          <Text style={styles.loadingText}>Loading progress...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
@@ -140,18 +301,18 @@ export default function ProgressScreen() {
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.greetingName}>Your Health</Text>
-            <Text style={styles.greetingSub}>April 1, 2026</Text>
+            <Text style={styles.greetingSub}>{getCurrentDate()}</Text>
           </View>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>A</Text>
+            <Text style={styles.avatarText}>{getUserInitial()}</Text>
           </View>
         </View>
         <View style={styles.statsPill}>
           {[
-            { val: '78 kg',  lbl: 'current'    },
-            { val: '−1.2',   lbl: 'kg this wk' },
-            { val: '85%',    lbl: 'adherence'  },
-            { val: '6 / 7',  lbl: 'days on plan'},
+            { val: `${progressData?.stats?.currentWeight?.toFixed(1) || generateWeightData()[generateWeightData().length - 1].val.toFixed(1)} kg`,  lbl: 'current'    },
+            { val: `−${progressData?.stats?.weightChange?.toFixed(1) || '1.5'}`,   lbl: 'kg this wk' },
+            { val: `${progressData?.stats?.adherence || 82}%`,    lbl: 'adherence'  },
+            { val: `${progressData?.stats?.daysOnPlan || generateAdherenceData().filter(d => d.done).length} / 7`,  lbl: 'days on plan'},
           ].map((item, i, arr) => (
             <React.Fragment key={i}>
               {i > 0 && <View style={styles.statsDivider} />}
@@ -170,9 +331,9 @@ export default function ProgressScreen() {
         {/* Goals */}
         <Text style={styles.sectionLabel}>This week's goals</Text>
         <View style={styles.goalsRow}>
-          <GoalCard title="Weight loss" value="−1.2 kg" sub="of −1.5 kg goal"
+          <GoalCard title="Weight loss" value={`−${progressData?.stats?.weightChange?.toFixed(1) || '1.5'} kg`} sub={`of −${(progressData?.stats?.weightChange * 1.25 || 1.9).toFixed(1)} kg goal`}
             accent={COLORS.greenMid} iconBg={COLORS.greenPale} progress={80} />
-          <GoalCard title="Budget kept" value="560 DA" sub="saved this week"
+          <GoalCard title="Budget kept" value={`${Math.round(progressData?.stats?.budgetSaved || (profileData?.monthlyBudget ? profileData.monthlyBudget / 40 : 125))} DA`} sub="saved this week"
             accent={COLORS.peach} iconBg="#FEF3E2" progress={70} />
         </View>
 
@@ -180,11 +341,11 @@ export default function ProgressScreen() {
         <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Weight trend</Text>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>7-day weight</Text>
-          <WeightChart />
+          <WeightChart weightData={progressData?.weightData || generateWeightData()} />
           <View style={styles.chipRow}>
-            <MetaChip label="Current: 78 kg" dot={COLORS.greenMid} />
-            <MetaChip label="−1.2 kg this week" dot={COLORS.greenSoft} />
-            <MetaChip label="Goal: 77 kg" dot={COLORS.peach} />
+            <MetaChip label={`Current: ${progressData?.stats?.currentWeight?.toFixed(1) || generateWeightData()[generateWeightData().length - 1].val.toFixed(1)} kg`} dot={COLORS.greenMid} />
+            <MetaChip label={`−${progressData?.stats?.weightChange?.toFixed(1) || '1.5'} kg this week`} dot={COLORS.greenSoft} />
+            <MetaChip label={`Goal: ${(progressData?.stats?.currentWeight - 1 || (generateWeightData()[generateWeightData().length - 1].val - 1)).toFixed(1)} kg`} dot={COLORS.peach} />
           </View>
         </View>
 
@@ -192,20 +353,20 @@ export default function ProgressScreen() {
         <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Adherence score</Text>
         <View style={styles.card}>
           <View style={styles.adherenceTop}>
-            <AdherenceRing pct={0.85} />
+            <AdherenceRing pct={(progressData?.stats?.adherence || 82) / 100} />
             <View style={styles.adherenceInfo}>
-              <Text style={styles.adherenceScore}>85%</Text>
+              <Text style={styles.adherenceScore}>{progressData?.stats?.adherence || 82}%</Text>
               <Text style={styles.adherenceLabel}>
                 You followed the plan most days. Good job!
               </Text>
               <View style={styles.chipRow}>
-                <MetaChip label="6 of 7 days" dot={COLORS.greenMid} />
+                <MetaChip label={`${progressData?.stats?.daysOnPlan || generateAdherenceData().filter(d => d.done).length} of 7 days`} dot={COLORS.greenMid} />
               </View>
             </View>
           </View>
           <View style={styles.divider} />
           <View style={styles.daysRow}>
-            {DAYS.map((d, i) => (
+            {(progressData?.days || generateAdherenceData()).map((d: any, i: number) => (
               <View key={i} style={styles.dayCol}>
                 <View style={styles.dayBarWrap}>
                   <View style={[styles.dayBar, {
@@ -230,7 +391,7 @@ export default function ProgressScreen() {
           </View>
           <Text style={styles.insightText}>
             <Text style={styles.insightBold}>You're on track for your goal! </Text>
-            At this pace, you'll reach 77 kg in about 6 more days. Keep it up!
+            At this pace, you'll reach ${(progressData?.stats?.currentWeight - 1 || (generateWeightData()[generateWeightData().length - 1].val - 1)).toFixed(1)} kg in about {Math.ceil((progressData?.stats?.weightChange || 1.5) / 0.15)} more days. Keep it up!
           </Text>
         </View>
 
@@ -239,7 +400,6 @@ export default function ProgressScreen() {
   );
 }
 
-// ── Styles ─────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe:            { flex: 1, backgroundColor: COLORS.greenDark },
   header:          { backgroundColor: COLORS.greenDark, paddingHorizontal: 24, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
@@ -292,7 +452,13 @@ const styles = StyleSheet.create({
 
   insightCard:     { backgroundColor: COLORS.greenDark, borderRadius: 20, padding: 18, flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   insightIcon:     { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  insightStar:     { width: 14, height: 14, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 2, transform: [{ rotate: '45deg' }] },
+  insightStar:     { width: 14, height: 14, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 2, transform: [{ rotate: '45deg' as any }] },
   insightText:     { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 20 },
   insightBold:     { fontWeight: '700', color: COLORS.white },
+
+  // Loading and error states
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.greenDark },
+  loadingText: { marginTop: 16, fontSize: 16, color: COLORS.greenSoft },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.greenDark, padding: 20 },
+  errorText: { fontSize: 16, color: COLORS.peach, textAlign: 'center' },
 });

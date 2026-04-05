@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  StatusBar, SafeAreaView, TouchableOpacity,
+  StatusBar, SafeAreaView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { mealPlanAPI } from '../../services/api';
 
 const COLORS = {
   greenDark: '#1B4332', greenMid: '#2D6A4F', greenSoft: '#74C69D',
@@ -14,7 +16,10 @@ const COLORS = {
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAYS_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const PLAN: Record<string, { time: string; name: string; kcal: string; cost: string; tag: string }[]> = {
+type Meal = { time: string; name: string; kcal: string; cost: string; tag: string };
+type MealPlan = Record<string, Meal[]>;
+
+const PLAN: MealPlan = {
   Monday: [
     { time: 'Breakfast', name: 'Bsisa with Olive Oil', kcal: '320 kcal', cost: '50 DA',  tag: 'Light' },
     { time: 'Lunch',     name: 'Rechta with Chicken',  kcal: '620 kcal', cost: '300 DA', tag: 'High Protein' },
@@ -96,11 +101,206 @@ function MealCard({ meal }: { meal: typeof PLAN['Monday'][0] }) {
 }
 
 export default function MealPlanScreen() {
-  const [activeDay, setActiveDay] = useState(0);
+  const { user, profileData } = useAuth();
+  const [activeDay, setActiveDay] = useState<number>(0);
+  const [mealPlanData, setMealPlanData] = useState<MealPlan | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Get current week number dynamically based on user's app usage
+  const getCurrentWeek = () => {
+    // Get user's start date from profileData (from database)
+    let userStartDate: Date;
+    
+    if (profileData?.startDate) {
+      // Use the start date from database
+      userStartDate = new Date(profileData.startDate);
+      console.log('Using start date from database:', profileData.startDate);
+    } else {
+      // Fallback to app launch date if no start date in database
+      userStartDate = new Date('2026-01-01');
+      console.log('No start date in database, using default:', userStartDate.toISOString().split('T')[0]);
+    }
+    
+    const today = new Date();
+    const daysSinceStart = Math.floor((today.getTime() - userStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    const weekNumber = Math.floor(daysSinceStart / 7) + 1; // Week 1 starts from day 0
+    
+    console.log('Week calculation:', {
+      today: today.toISOString().split('T')[0],
+      userStartDate: userStartDate.toISOString().split('T')[0],
+      daysSinceStart,
+      weekNumber
+    });
+    
+    return weekNumber;
+  };
+
+  // Get current date dynamically
+  const getCurrentDate = () => {
+    const today = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    };
+    return today.toLocaleDateString('en-US', options);
+  };
+
+  // Get dates for all days of the week
+  const getWeekDates = () => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset);
+    
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      weekDates.push(date.getDate());
+    }
+    return weekDates;
+  };
+
+  const generatePersonalizedPlan = (): MealPlan => {
+    const basePlan: MealPlan = {
+      Monday: [
+        { time: 'Breakfast', name: 'Bsisa with Olive Oil', kcal: '320 kcal', cost: '50 DA', tag: 'Light' },
+        { time: 'Lunch',     name: 'Rechta with Chicken',  kcal: '620 kcal', cost: '300 DA', tag: 'High Protein' },
+        { time: 'Dinner',    name: 'Vegetable Shorba',      kcal: '280 kcal', cost: '120 DA', tag: 'Light' },
+      ],
+      Tuesday: [
+        { time: 'Breakfast', name: 'Msemen & Honey',         kcal: '380 kcal', cost: '80 DA',  tag: 'Classic' },
+        { time: 'Lunch',     name: 'Frik Soup & Salad',      kcal: '450 kcal', cost: '250 DA', tag: 'Balanced' },
+        { time: 'Dinner',    name: 'Grilled Fish & Veggies', kcal: '520 kcal', cost: '350 DA', tag: 'High Protein' },
+      ],
+      Wednesday: [
+        { time: 'Breakfast', name: 'Chakchouka & Bread',      kcal: '350 kcal', cost: '90 DA',  tag: 'Balanced' },
+        { time: 'Lunch',     name: 'Couscous with Lamb',    kcal: '680 kcal', cost: '400 DA', tag: 'High Protein' },
+        { time: 'Dinner',    name: 'Lentil Soup',           kcal: '220 kcal', cost: '100 DA', tag: 'Light' },
+      ],
+      Thursday: [
+        { time: 'Breakfast', name: 'Baghrir & Honey',       kcal: '300 kcal', cost: '70 DA',  tag: 'Classic' },
+        { time: 'Lunch',     name: 'Chicken Tajine',       kcal: '580 kcal', cost: '320 DA', tag: 'High Protein' },
+        { time: 'Dinner',    name: 'Harira Soup',          kcal: '260 kcal', cost: '110 DA', tag: 'Light' },
+      ],
+      Friday: [
+        { time: 'Breakfast', name: 'Rogag & Eggs',          kcal: '400 kcal', cost: '120 DA', tag: 'Balanced' },
+        { time: 'Lunch',     name: 'Merguez Sandwich',      kcal: '550 kcal', cost: '280 DA', tag: 'High Protein' },
+        { time: 'Dinner',    name: 'Salad & Yogurt',       kcal: '180 kcal', cost: '80 DA',  tag: 'Light' },
+      ],
+      Saturday: [
+        { time: 'Breakfast', name: 'Khobz & Jam',           kcal: '280 kcal', cost: '60 DA',  tag: 'Classic' },
+        { time: 'Lunch',     name: 'Grilled Chicken',       kcal: '620 kcal', cost: '350 DA', tag: 'High Protein' },
+        { time: 'Dinner',    name: 'Vegetable Couscous',    kcal: '480 kcal', cost: '200 DA', tag: 'Balanced' },
+      ],
+      Sunday: [
+        { time: 'Breakfast', name: 'Crepe & Honey',         kcal: '320 kcal', cost: '85 DA',  tag: 'Classic' },
+        { time: 'Lunch',     name: 'Beef Brochettes',       kcal: '590 kcal', cost: '380 DA', tag: 'High Protein' },
+        { time: 'Dinner',    name: 'Mixed Green Salad',     kcal: '150 kcal', cost: '70 DA',  tag: 'Light' },
+      ],
+    };
+
+    if (profileData?.dietaryRestrictions?.includes('gluten-free')) {
+      basePlan.Monday[0].name = 'Gluten-Free Porridge';
+      basePlan.Tuesday[0].name = 'Rice Flour Pancakes';
+    }
+
+    if (profileData?.healthConditions?.includes('diabetes')) {
+      basePlan.Monday[0].name = 'Low-Sugar Oatmeal';
+      basePlan.Monday[0].kcal = '250 kcal';
+      basePlan.Tuesday[0].name = 'Sugar-Free Msemen';
+      basePlan.Tuesday[0].kcal = '300 kcal';
+    }
+
+    if (profileData?.foodPreferences?.includes('halal')) {
+      basePlan.Monday[1].name = 'Halal Rechta with Chicken';
+      basePlan.Tuesday[2].name = 'Halal Grilled Fish';
+    }
+
+    if (profileData?.monthlyBudget) {
+      const dailyBudget = profileData.monthlyBudget / 30;
+      const budgetFactor = dailyBudget / 800; // 800 DA is default daily budget
+      
+      Object.keys(basePlan).forEach(day => {
+        basePlan[day].forEach(meal => {
+          const baseCost = parseInt(meal.cost);
+          meal.cost = `${Math.round(baseCost * budgetFactor)} DA`;
+        });
+      });
+    }
+
+    return basePlan;
+  };
+
+  const personalizedPlan = generatePersonalizedPlan();
+
+  useEffect(() => {
+    loadMealPlan();
+  }, []);
+
+  const loadMealPlan = async () => {
+    // For now, skip API call since user.id is not available
+    // TODO: Re-enable when user authentication is properly implemented
+    console.log('Skipping meal plan API call for now');
+    
+    // Use personalized meal plan based on user profile
+    setMealPlanData(personalizedPlan);
+    setLoading(false);
+    console.log('Using personalized meal plan data:', personalizedPlan);
+    console.log('Based on user profile:', profileData);
+    
+    return;
+
+    // Original code (commented out for now)
+    /*
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await mealPlanAPI.getLatestPlan(user.id);
+      setMealPlanData(data);
+      console.log('Meal plan data loaded:', data);
+    } catch (err) {
+      console.error('Error loading meal plan:', err);
+      setError('Failed to load meal plan');
+    } finally {
+      setLoading(false);
+    }
+    */
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.greenSoft} />
+          <Text style={styles.loadingText}>Loading meal plan...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const dayName = DAYS_FULL[activeDay];
-  const meals = PLAN[dayName];
-  const totalCost = meals.reduce((sum, m) => sum + parseInt(m.cost), 0);
-  const totalKcal = meals.reduce((sum, m) => sum + parseInt(m.kcal), 0);
+  const meals = mealPlanData?.[dayName] || personalizedPlan[dayName];
+  const totalCost = meals.reduce((sum: number, m: Meal) => sum + parseInt(m.cost || '0'), 0);
+  const totalKcal = meals.reduce((sum: number, m: Meal) => sum + parseInt(m.kcal || '0'), 0);
+  const weekDates = getWeekDates();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -111,10 +311,10 @@ export default function MealPlanScreen() {
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.headerTitle}>Weekly Plan</Text>
-            <Text style={styles.headerSub}>Your curated meal schedule</Text>
+            <Text style={styles.headerSub}>{getCurrentDate()}</Text>
           </View>
           <View style={styles.weekBadge}>
-            <Text style={styles.weekBadgeText}>Week 15</Text>
+            <Text style={styles.weekBadgeText}>Week {getCurrentWeek()}</Text>
           </View>
         </View>
 
@@ -132,7 +332,7 @@ export default function MealPlanScreen() {
               style={[styles.dayBtn, i === activeDay && styles.dayBtnActive]}
             >
               <Text style={[styles.dayLabel, i === activeDay && styles.dayLabelActive]}>{d}</Text>
-              <Text style={[styles.dayNum, i === activeDay && styles.dayNumActive]}>{i + 14}</Text>
+              <Text style={[styles.dayNum, i === activeDay && styles.dayNumActive]}>{weekDates[i]}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -163,7 +363,7 @@ export default function MealPlanScreen() {
         <Text style={styles.sectionLabel}>{dayName}'s Meals</Text>
 
         {/* Meal Cards */}
-        {meals.map((meal, i) => (
+        {meals.map((meal: Meal, i: number) => (
           <MealCard key={i} meal={meal} />
         ))}
 
@@ -174,17 +374,23 @@ export default function MealPlanScreen() {
           </View>
           <Text style={styles.tipText}>
             <Text style={styles.tipBold}>Tip: </Text>
-            Prep your Rechta broth the night before to save time on busy mornings.
+            {profileData?.dietaryRestrictions?.includes('gluten-free') 
+              ? 'Prep your gluten-free alternatives in advance to save time during busy weekdays.'
+              : profileData?.healthConditions?.includes('diabetes')
+              ? 'Monitor your blood sugar levels after meals and adjust portions as needed.'
+              : profileData?.foodPreferences?.includes('halal')
+              ? 'Ensure all your ingredients are certified halal for peace of mind.'
+              : 'Prep your Rechta broth the night before to save time on busy mornings.'
+            }
           </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   safe:           { flex: 1, backgroundColor: COLORS.greenDark },
-
   header:         { backgroundColor: COLORS.greenDark, paddingBottom: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
   headerTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 24, paddingTop: 8, marginBottom: 20 },
   headerTitle:    { fontFamily: 'serif', fontSize: 22, fontWeight: '600', color: COLORS.white, lineHeight: 28 },
@@ -223,7 +429,12 @@ const styles = StyleSheet.create({
 
   tipCard:        { backgroundColor: COLORS.greenDark, borderRadius: 20, padding: 18, flexDirection: 'row', gap: 14, alignItems: 'flex-start', marginTop: 8 },
   tipIcon:        { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  tipStar:        { width: 14, height: 14, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 2, transform: [{ rotate: '45deg' }] },
+  tipStar:        { width: 14, height: 14, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 2, transform: [{ rotate: '45deg' as any }] },
   tipText:        { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 20 },
   tipBold:        { fontWeight: '700', color: COLORS.white },
+
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.greenDark },
+  loadingText: { marginTop: 16, fontSize: 16, color: COLORS.greenSoft },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.greenDark, padding: 20 },
+  errorText: { fontSize: 16, color: COLORS.peach, textAlign: 'center' },
 });

@@ -13,6 +13,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { profileAPI } from '../../services/api';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Health'>;
@@ -51,16 +52,16 @@ const HEALIZA = {
 };
 
 const INITIAL_CONDITIONS: HealthCondition[] = [
-  { id: 'diabetes',     name: 'Diabetes',         icon: '🩸', selected: false },
-  { id: 'hypertension', name: 'Hypertension',      icon: '❤️', selected: false },
-  { id: 'cholesterol',  name: 'High Cholesterol',  icon: '🫀', selected: false },
-  { id: 'celiac',       name: 'Celiac Disease',    icon: '🌾', selected: false },
-  { id: 'allergies',    name: 'Food Allergies',    icon: '⚠️', selected: false },
-  { id: 'kidney',       name: 'Kidney Disease',    icon: '🫘', selected: false },
-  { id: 'thyroid',      name: 'Thyroid Issues',    icon: '🦋', selected: false },
-  { id: 'heart',        name: 'Heart Disease',     icon: '💗', selected: false },
-  { id: 'ibs',          name: 'IBS / Gut Issues',  icon: '🫁', selected: false },
-  { id: 'anemia',       name: 'Anemia',            icon: '🔴', selected: false },
+  { id: 'diabetes',     name: 'diabete',         icon: '🩸', selected: false },
+  { id: 'hypertension', name: 'hypertension',      icon: '❤️', selected: false },
+  { id: 'cholesterol',  name: 'cholesterol',      icon: '🫀', selected: false },
+  { id: 'celiac',       name: 'maladie_celiaque', icon: '🌾', selected: false },
+  { id: 'allergies',    name: 'allergies',        icon: '⚠️', selected: false },
+  { id: 'kidney',       name: 'insuffisance_renale', icon: '🫘', selected: false },
+  { id: 'thyroid',      name: 'thyroid',          icon: '🦋', selected: false },
+  { id: 'heart',        name: 'cardiovasculaire', icon: '💗', selected: false },
+  { id: 'ibs',          name: 'troubles_intestinaux', icon: '🫁', selected: false },
+  { id: 'anemia',       name: 'anemie',           icon: '🔴', selected: false },
 ];
 
 const DIET_TAGS: DietTag[] = [
@@ -92,6 +93,12 @@ export default function HealthScreen({ navigation, route }: Props) {
   const [otherConditions, setOtherConditions]   = useState('');
   const [otherDiet, setOtherDiet]               = useState('');
 
+  // Required fields for ProfilePayload
+  const [age, setAge]                           = useState('28');
+  const [poids, setPoids]                       = useState('70');
+  const [taille, setTaille]                     = useState('170');
+  const [sexe, setSexe]                         = useState('homme');
+
   const toggle = <T extends { id: string; selected: boolean }>(
     list: T[],
     setList: React.Dispatch<React.SetStateAction<T[]>>,
@@ -99,20 +106,51 @@ export default function HealthScreen({ navigation, route }: Props) {
   ) => {
     setList(list.map((item) => item.id === id ? { ...item, selected: !item.selected } : item));
   };
-    const handleNext = () => {
-      const selectedConditions = conditions.filter((c) => c.selected).map((c) => c.name);
-      const selectedDiet = dietTags.filter((d) => d.selected).map((d) => d.label);
-      const selectedFoodPrefs = foodPrefs.filter((f) => f.selected).map((f) => f.label);
 
-      navigation.navigate('Budget', {
+  const handleNext = async () => {
+    const selectedConditions = conditions.filter((c) => c.selected).map((c) => c.name);
+    const selectedDiet = dietTags.filter((d) => d.selected).map((d) => d.label);
+    const selectedFoodPrefs = foodPrefs.filter((f) => f.selected).map((f) => f.label);
+
+    try {
+      // Save health profile to backend with required ProfilePayload fields
+      const healthData = {
+        fullName: route.params?.name || '',
         email: route.params?.email || '',
-        name: route.params?.name || '',
-        healthConditions: selectedConditions,
-        otherConditions,
-        dietaryRestrictions: [...selectedDiet, otherDiet].filter(Boolean).join(', '),
-        foodPreferences: selectedFoodPrefs.join(', '),
-      });
-    };
+        nom: route.params?.name || 'User', // Required by backend
+        age: parseInt(age), // Convert to number
+        poids: parseFloat(poids), // Convert to number
+        taille: parseFloat(taille), // Convert to number
+        sexe: sexe, // Should be 'homme' or 'femme'
+        activite: 'sedentaire', // Default value
+        objectif: 'maintien', // Default value
+        maladies: selectedConditions, // Health conditions
+        allergies: selectedDiet, // Dietary restrictions
+        preferences: selectedFoodPrefs, // Food preferences
+        otherConditions: otherConditions, // Custom field
+        otherDiet: otherDiet, // Custom field
+      };
+
+      await profileAPI.saveProfile(healthData);
+      console.log('Health profile saved:', healthData);
+    } catch (error) {
+      console.error('Error saving health profile:', error);
+      // Continue even if API fails
+    }
+
+    navigation.navigate('Budget', {
+      email: route.params?.email || '',
+      name: route.params?.name || '',
+      age: age,
+      poids: poids,
+      taille: taille,
+      sexe: sexe,
+      healthConditions: selectedConditions,
+      otherConditions,
+      dietaryRestrictions: [...selectedDiet, otherDiet].filter(Boolean).join(', '),
+      foodPreferences: selectedFoodPrefs.join(', '),
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -143,6 +181,66 @@ export default function HealthScreen({ navigation, route }: Props) {
 
         {/* ── Body ── */}
         <View style={styles.body}>
+
+          {/* ── Basic Info (Required) ── */}
+          <Text style={styles.sectionLabel}>BASIC INFORMATION</Text>
+          <Text style={styles.sectionSub}>Required fields for your profile</Text>
+          
+          <View style={styles.basicInfoGrid}>
+            <View style={styles.inputWrap}>
+              <Text style={styles.inputLabel}>Age</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="28"
+                placeholderTextColor={HEALIZA.muted}
+                value={age}
+                onChangeText={setAge}
+                keyboardType="numeric"
+              />
+            </View>
+            
+            <View style={styles.inputWrap}>
+              <Text style={styles.inputLabel}>Weight (kg)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="70"
+                placeholderTextColor={HEALIZA.muted}
+                value={poids}
+                onChangeText={setPoids}
+                keyboardType="numeric"
+              />
+            </View>
+            
+            <View style={styles.inputWrap}>
+              <Text style={styles.inputLabel}>Height (cm)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="170"
+                placeholderTextColor={HEALIZA.muted}
+                value={taille}
+                onChangeText={setTaille}
+                keyboardType="numeric"
+              />
+            </View>
+            
+            <View style={styles.inputWrap}>
+              <Text style={styles.inputLabel}>Gender</Text>
+              <View style={styles.genderRow}>
+                <TouchableOpacity
+                  style={[styles.genderBtn, sexe === 'homme' && styles.genderBtnActive]}
+                  onPress={() => setSexe('homme')}
+                >
+                  <Text style={[styles.genderBtnText, sexe === 'homme' && styles.genderBtnTextActive]}>Male</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.genderBtn, sexe === 'femme' && styles.genderBtnActive]}
+                  onPress={() => setSexe('femme')}
+                >
+                  <Text style={[styles.genderBtnText, sexe === 'femme' && styles.genderBtnTextActive]}>Female</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
 
           {/* ── 1. Health Conditions ── */}
           <Text style={styles.sectionLabel}>HEALTH CONDITIONS</Text>
@@ -318,6 +416,58 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: HEALIZA.muted,
     marginBottom: 12,
+  },
+
+  // Basic info grid
+  basicInfoGrid: {
+    gap: 16,
+    marginBottom: 24,
+  },
+
+  // Input fields
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: HEALIZA.dark,
+    marginBottom: 6,
+  },
+  textInput: {
+    fontSize: 16,
+    color: HEALIZA.text,
+    backgroundColor: HEALIZA.inputBg,
+    borderWidth: 1.5,
+    borderColor: HEALIZA.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+
+  // Gender selection
+  genderRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  genderBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: HEALIZA.border,
+    backgroundColor: HEALIZA.inputBg,
+    alignItems: 'center',
+  },
+  genderBtnActive: {
+    backgroundColor: HEALIZA.dark,
+    borderColor: HEALIZA.dark,
+  },
+  genderBtnText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: HEALIZA.muted,
+  },
+  genderBtnTextActive: {
+    color: '#fff',
   },
 
   // Condition chips

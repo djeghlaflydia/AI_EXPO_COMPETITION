@@ -1,11 +1,12 @@
 // screens/main/ProfileScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   StatusBar, SafeAreaView, TouchableOpacity, Image, Alert,
-  Platform, TextInput,
+  Platform, TextInput, ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { profileAPI } from '../../services/api';
 
 const COLORS = {
   greenDark: '#1B4332', greenMid: '#2D6A4F', greenSoft: '#74C69D',
@@ -59,13 +60,85 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 // ── Profile Screen ─────────────────────────────────────
 export default function ProfileScreen() {
-  const { signOut } = useAuth();
+  const { user, profileData, signOut } = useAuth();
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [name, setName]     = useState('Ahmed Benali');
+  const [name, setName]     = useState(user?.fullName || 'User');
   const [age, setAge]       = useState('28');
   const [weight, setWeight] = useState('78');
   const [height, setHeight] = useState('178');
   const [editMode, setEditMode] = useState(false);
+  const [backendProfileData, setBackendProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProfileData();
+  }, []);
+
+  useEffect(() => {
+    // Update state with profileData from AuthContext
+  }, [profileData]);
+
+  const loadProfileData = async () => {
+    // For now, skip API call since user.id is not available
+    // TODO: Re-enable when user authentication is properly implemented
+    console.log('Skipping profile API call for now');
+    
+    // Use data from AuthContext instead
+    if (profileData) {
+      // Try to get name from user data or use a default
+      setName(user?.fullName || user?.email?.split('@')[0] || 'User');
+      
+      // For now, we don't have age/weight/height in profileData, so use defaults
+      // These could be added to profileData in the future
+      setAge('28'); 
+      setWeight('78');
+      setHeight('178');
+      
+      console.log('Using AuthContext data:', profileData);
+      console.log('Displaying actual user profile information');
+    }
+    
+    setLoading(false);
+    
+    return;
+
+    // Original code (commented out for now)
+    /*
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const data = await profileAPI.getLatestProfile(user.id);
+      setBackendProfileData(data);
+      
+      // Update state with actual profile data
+      if (data) {
+        setName(data.fullName || user?.fullName || 'User');
+        setAge(data.age?.toString() || '28');
+        setWeight(data.poids?.toString() || '78');
+        setHeight(data.taille?.toString() || '178');
+      }
+      
+      console.log('Profile data loaded:', data);
+    } catch (err) {
+      console.error('Error loading profile:', err);
+    } finally {
+      setLoading(false);
+    }
+    */
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.greenDark} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.greenSoft} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const bmi = (Number(weight) / ((Number(height) / 100) ** 2)).toFixed(1);
 
@@ -137,7 +210,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <Text style={styles.avatarName}>{name}</Text>
-          <Text style={styles.avatarSub}>ahmed.benali@email.com</Text>
+          <Text style={styles.avatarSub}>{user?.email || 'user@example.com'}</Text>
         </View>
 
         {/* Quick Stats */}
@@ -186,17 +259,40 @@ export default function ProfileScreen() {
         {/* Diet & Health */}
         <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Diet & Health</Text>
         <SectionCard title="Health Profile">
-          <InfoRow label="Activity Level" value="Moderately Active" />
-          <InfoRow label="Goal" value="Lose Weight" />
-          <InfoRow label="Diet Type" value="Balanced" />
-          <InfoRow label="Daily Calories" value="2,200 kcal" />
+          {profileData?.healthConditions && profileData.healthConditions.length > 0 && (
+            <InfoRow label="Health Conditions" value={profileData.healthConditions.join(', ')} />
+          )}
+          {profileData?.otherConditions && (
+            <InfoRow label="Other Conditions" value={profileData.otherConditions} />
+          )}
+          {profileData?.dietaryRestrictions && (
+            <InfoRow label="Dietary Restrictions" value={profileData.dietaryRestrictions} />
+          )}
+          {profileData?.foodPreferences && (
+            <InfoRow label="Food Preferences" value={profileData.foodPreferences} />
+          )}
+          {profileData?.additionalNotes && (
+            <InfoRow label="Additional Notes" value={profileData.additionalNotes} />
+          )}
+          {/* Show defaults if no profile data */}
+          {!profileData?.healthConditions && !profileData?.dietaryRestrictions && (
+            <>
+              <InfoRow label="Activity Level" value="Moderately Active" />
+              <InfoRow label="Goal" value="Lose Weight" />
+              <InfoRow label="Diet Type" value="Balanced" />
+              <InfoRow label="Daily Calories" value="2,200 kcal" />
+            </>
+          )}
         </SectionCard>
 
         {/* Budget */}
         <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Budget</Text>
         <SectionCard title="Financial Limits">
-          <InfoRow label="Daily Budget" value="800 DA" />
-          <InfoRow label="Monthly Budget" value="15,000 DA" />
+          <InfoRow label="Daily Budget" value={profileData?.monthlyBudget ? `${Math.round(profileData.monthlyBudget / 30)} DA` : '800 DA'} />
+          <InfoRow label="Monthly Budget" value={profileData?.monthlyBudget ? `${profileData.monthlyBudget} DA` : '15,000 DA'} />
+          {profileData?.familySize && (
+            <InfoRow label="Family Size" value={`${profileData.familySize} members`} />
+          )}
         </SectionCard>
 
         {/* Logout Button */}
@@ -469,8 +565,22 @@ const styles = StyleSheet.create({
   },
   
   logoutText: { 
-    fontSize: 15, 
+    fontSize: 16, 
     fontWeight: '600', 
-    color: COLORS.red 
+    color: COLORS.white 
+  },
+
+  // Loading states
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.greenDark 
+  },
+  
+  loadingText: { 
+    marginTop: 16, 
+    fontSize: 16, 
+    color: COLORS.greenSoft 
   },
 });
